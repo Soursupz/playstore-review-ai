@@ -1,0 +1,8 @@
+flask
+openai
+python-dotenv
+google-play-scraper
+pandas
+scikit-learn
+requests
+gunicorn
