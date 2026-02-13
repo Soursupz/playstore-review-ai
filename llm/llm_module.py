@@ -1,23 +1,38 @@
 import os
 from openai import OpenAI
 
-def generate_answer(query, relevant_reviews):
+print("🚀 LLM MODULE LOADING...")
 
-    api_key = os.getenv("OPENAI_API_KEY")
+
+def get_client():
+    """
+    Ambil OpenAI client secara aman.
+    Tidak membuat client saat module import.
+    """
+
+    api_key = os.environ.get("OPENAI_API_KEY")
 
     if not api_key:
-        print("❌ OPENAI_API_KEY tidak ditemukan")
+        print("❌ OPENAI_API_KEY TIDAK DITEMUKAN DI ENV")
+        return None
+
+    print("✅ OPENAI_API_KEY TERBACA")
+    return OpenAI(api_key=api_key)
+
+
+def generate_answer(query, relevant_reviews):
+
+    client = get_client()
+
+    if not client:
         return "Server belum dikonfigurasi dengan API Key.", 0
 
     if not relevant_reviews:
-        return "Maaf, saya tidak menemukan ulasan yang relevan.", 0
+        return "Tidak ditemukan ulasan relevan.", 0
 
-    try:
-        client = OpenAI(api_key=api_key)
+    context = "\n\n".join(relevant_reviews)
 
-        context = "\n\n".join(relevant_reviews)
-
-        prompt = f"""
+    prompt = f"""
 Gunakan hanya ulasan berikut untuk menjawab pertanyaan.
 
 Ulasan:
@@ -29,6 +44,7 @@ Pertanyaan:
 Jawab dengan bahasa natural dan informatif.
 """
 
+    try:
         print("🔥 CALLING OPENAI API...")
 
         response = client.chat.completions.create(
@@ -42,12 +58,12 @@ Jawab dengan bahasa natural dan informatif.
         )
 
         answer = response.choices[0].message.content.strip()
-
-        usage = response.usage.total_tokens if response.usage else 0
+        total_tokens = response.usage.total_tokens
 
         print("✅ OPENAI RESPONSE RECEIVED")
+        print("🎯 TOKENS USED:", total_tokens)
 
-        return answer, usage
+        return answer, total_tokens
 
     except Exception as e:
         print("❌ OPENAI ERROR:", e)
