@@ -1,27 +1,16 @@
-def simple_sentiment(relevant_reviews):
-
-    if not relevant_reviews:
+def sentiment_stats(categorized):
+    """
+    Hitung jumlah review per kategori dan persentasenya.
+    categorized = {"bad": [...], "good": [...]}
+    """
+    total = sum(len(v) for v in categorized.values())
+    if total == 0:
         return None
 
-    positive_words = ["bagus", "mantap", "baik", "keren", "recommended", "puas"]
-    negative_words = ["jelek", "buruk", "error", "lemot", "parah", "kecewa"]
+    stats = {}
+    for category, reviews_list in categorized.items():
+        count = len(reviews_list)
+        pct   = round((count / total) * 100, 1)
+        stats[category] = {"count": count, "percentage": pct}
 
-    score = 0
-
-    for review in relevant_reviews:
-        review_lower = review.lower()
-
-        for word in positive_words:
-            if word in review_lower:
-                score += 1
-
-        for word in negative_words:
-            if word in review_lower:
-                score -= 1
-
-    if score > 0:
-        return "Positif 😊"
-    elif score < 0:
-        return "Negatif 😞"
-    else:
-        return "Netral 😐"
+    return stats

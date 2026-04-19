@@ -21,3 +21,10 @@ def preprocess_reviews(raw_data):
     df["clean_review"] = df["review"].apply(clean_text)
 
     return df
+
+def preprocess_categorized(categorized):
+    """Preprocess tiap kategori, return dict of DataFrames"""
+    return {
+        category: preprocess_reviews(reviews_list)
+        for category, reviews_list in categorized.items()
+    }

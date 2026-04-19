@@ -1,8 +1,9 @@
 flask
 openai
-python-dotenv
 google-play-scraper
+torch
+transformers
 pandas
 scikit-learn
-requests
+imbalanced-learn
 gunicorn

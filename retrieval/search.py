@@ -14,3 +14,13 @@ def search_reviews(query, df, top_n=2):
     top_indices = similarity[0].argsort()[-top_n:][::-1]
 
     return df.iloc[top_indices]["review"].tolist()
+
+def search_categorized(query, categorized_dfs, top_n=2):
+    """
+    Search di tiap kategori, return dict berisi
+    review relevan per kategori
+    """
+    results = {}
+    for category, df in categorized_dfs.items():
+        results[category] = search_reviews(query, df, top_n)
+    return results
