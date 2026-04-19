@@ -2,31 +2,36 @@ import torch
 import os
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-# ✅ Load dari HuggingFace Hub
 HF_REPO_ID = "username/indobert-shopee-sentiment"  # ganti username kamu
-HF_TOKEN   = os.environ.get("HF_TOKEN")            # ambil dari env Railway
+HF_TOKEN   = os.environ.get("HF_TOKEN")
 
+_device    = torch.device('cpu')
 _tokenizer = None
 _model     = None
-_device    = None
 
 def load_model():
-    global _tokenizer, _model, _device
+    global _tokenizer, _model
     if _model is None:
-        print("🔄 Loading IndoBERT dari HuggingFace Hub...")
-        _device    = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print("🔄 Loading IndoBERT dari HuggingFace...")
         _tokenizer = AutoTokenizer.from_pretrained(
             HF_REPO_ID,
-            token=HF_TOKEN
+            token=HF_TOKEN,
+            timeout=120  # ✅ tambah timeout
         )
         _model = AutoModelForSequenceClassification.from_pretrained(
             HF_REPO_ID,
-            token=HF_TOKEN
+            token=HF_TOKEN,
+            low_cpu_mem_usage=True
         )
         _model.to(_device)
         _model.eval()
-        print(f"✅ Model loaded! Device: {_device}")
+        print("✅ Model loaded!")
     return _model, _tokenizer, _device
+
+# ✅ Preload saat module diimport (bukan saat request)
+print("🚀 Preloading model...")
+load_model()
+print("✅ Model siap!")
 
 def predict_sentiment(text: str) -> dict:
     model, tokenizer, device = load_model()
