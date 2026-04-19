@@ -16,7 +16,7 @@ def load_model():
         _tokenizer = AutoTokenizer.from_pretrained(
             HF_REPO_ID,
             token=HF_TOKEN,
-            timeout=120  # ✅ tambah timeout
+            use_fast=False # use slow tokenizer
         )
         _model = AutoModelForSequenceClassification.from_pretrained(
             HF_REPO_ID,
