@@ -101,7 +101,7 @@ def run_scraping_job(job_id, package_name, query, chat_history):
 # ============================================================
 # ROUTE: Halaman utama (GET)
 # ============================================================
-@app.route("/", methods=["GET"])
+@app.route("/", methods=["GET", "POST"])
 def index():
     if "chat_history" not in session:
         session["chat_history"] = []
