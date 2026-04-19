@@ -1,139 +1,1201 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Sentiment Chatbot</title>
-
+<title>PlayStore AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Zen+Kaku+Gothic+New:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        font-family: 'Segoe UI', sans-serif;
-    }
-
-    body {
-        height: 100vh;
-        overflow: hidden;
-        color: white;
-    }
-
-    /* 🔥 Background animasi gradient */
-    body::before {
-        content: "";
-        position: absolute;
-        width: 200%;
-        height: 200%;
-        background: linear-gradient(
-            45deg,
-            #ff00cc,
-            #3333ff,
-            #00ffee,
-            #ff00cc
-        );
-        animation: animateBG 10s linear infinite;
-        z-index: -1;
-        filter: blur(100px);
-    }
-
-    @keyframes animateBG {
-        0% { transform: translate(0,0); }
-        50% { transform: translate(-25%, -25%); }
-        100% { transform: translate(0,0); }
-    }
-
-    /* Container */
-    .container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100%;
-    }
-
-    .chatbox {
-        width: 400px;
-        backdrop-filter: blur(20px);
-        background: rgba(0,0,0,0.4);
-        border-radius: 20px;
-        padding: 20px;
-        box-shadow: 0 0 30px rgba(0,255,255,0.5);
-    }
-
-    .title {
-        text-align: center;
-        font-size: 20px;
-        margin-bottom: 15px;
-    }
-
-    .messages {
-        height: 250px;
-        overflow-y: auto;
-        margin-bottom: 10px;
-    }
-
-    .input-area {
-        display: flex;
-    }
-
-    input {
-        flex: 1;
-        padding: 10px;
-        border-radius: 10px;
-        border: none;
-        outline: none;
-    }
-
-    button {
-        margin-left: 10px;
-        padding: 10px 15px;
-        border: none;
-        border-radius: 10px;
-        background: cyan;
-        cursor: pointer;
-        transition: 0.3s;
-    }
-
-    button:hover {
-        background: magenta;
-        color: white;
-    }
+  :root {
+    --torii-red: #c0392b;
+    --torii-dark: #8b1a10;
+    --gold: #d4a944;
+    --cream: #f5f0e8;
+    --ink: #1a1410;
+    --glass: rgba(10, 8, 5, 0.55);
+    --glass-light: rgba(245, 240, 232, 0.08);
+    --glass-border: rgba(212, 169, 68, 0.25);
+  }
+ 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+  body {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    min-height: 100vh;
+    background: #0a0804;
+    color: var(--cream);
+    overflow-x: hidden;
+  }
+ 
+  /* ===== BACKGROUND ===== */
+  .bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+ 
+  .bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    filter: brightness(0.45) saturate(1.2);
+  }
+ 
+  .bg-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(192,57,43,0.18) 0%, transparent 60%),
+      linear-gradient(to bottom, rgba(10,8,4,0.3) 0%, rgba(10,8,4,0.65) 70%, rgba(10,8,4,0.9) 100%);
+  }
+ 
+  /* floating dust particles */
+  .particles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+ 
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: rgba(212,169,68,0.6);
+    border-radius: 50%;
+    animation: floatUp linear infinite;
+  }
+ 
+  @keyframes floatUp {
+    0%   { transform: translateY(100vh) translateX(0) scale(1); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 0.8; }
+    100% { transform: translateY(-10vh) translateX(40px) scale(0.3); opacity: 0; }
+  }
+ 
+  /* ===== LAYOUT ===== */
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+ 
+  /* ===== SCREENS ===== */
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: 520px;
+    animation: fadeIn 0.6s ease forwards;
+  }
+ 
+  .screen.active { display: flex; flex-direction: column; align-items: center; }
+ 
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+ 
+  /* ===== GLASS CARD ===== */
+  .glass-card {
+    width: 100%;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,169,68,0.1);
+  }
+ 
+  /* ===== TORII ICON ===== */
+  .torii-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+ 
+  .torii-svg { width: 64px; height: 64px; filter: drop-shadow(0 0 12px rgba(192,57,43,0.6)); }
+ 
+  /* ===== WELCOME SCREEN ===== */
+  .welcome-kana {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 13px;
+    font-weight: 300;
+    letter-spacing: 0.4em;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+  }
+ 
+  .welcome-title {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--cream);
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+ 
+  .welcome-title span { color: var(--gold); }
+ 
+  .welcome-sub {
+    font-size: 13px;
+    color: rgba(245,240,232,0.55);
+    text-align: center;
+    letter-spacing: 0.05em;
+    margin-bottom: 2rem;
+  }
+ 
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.8rem;
+  }
+ 
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--glass-border), transparent);
+  }
+ 
+  .divider-diamond {
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    transform: rotate(45deg);
+    opacity: 0.6;
+  }
+ 
+  .feature-list {
+    list-style: none;
+    margin-bottom: 2rem;
+  }
+ 
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(212,169,68,0.08);
+    font-size: 14px;
+    color: rgba(245,240,232,0.8);
+    line-height: 1.5;
+  }
+ 
+  .feature-list li:last-child { border-bottom: none; }
+ 
+  .feat-num {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--gold);
+    font-family: 'Noto Serif JP', serif;
+    margin-top: 1px;
+  }
+ 
+  /* ===== BUTTONS ===== */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--torii-red), var(--torii-dark));
+    border: none;
+    border-radius: 12px;
+    color: var(--cream);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(192,57,43,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+ 
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+ 
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(192,57,43,0.55); }
+  .btn-primary:hover::before { opacity: 1; }
+  .btn-primary:active { transform: translateY(0); }
+ 
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: rgba(245,240,232,0.65);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 13px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+ 
+  .btn-secondary:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+ 
+  /* ===== TUTORIAL SCREEN ===== */
+  .screen-label {
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+ 
+  .tutorial-title {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.4rem;
+    color: var(--cream);
+  }
+ 
+  .tutorial-desc {
+    font-size: 13px;
+    color: rgba(245,240,232,0.5);
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+ 
+  .step-card {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 1rem 1.2rem;
+    background: var(--glass-light);
+    border: 1px solid rgba(212,169,68,0.1);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    transition: border-color 0.3s;
+  }
+ 
+  .step-card:hover { border-color: rgba(212,169,68,0.3); }
+ 
+  .step-badge {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--torii-red), var(--torii-dark));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cream);
+    box-shadow: 0 2px 8px rgba(192,57,43,0.35);
+  }
+ 
+  .step-content { flex: 1; }
+ 
+  .step-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cream);
+    margin-bottom: 4px;
+  }
+ 
+  .step-desc {
+    font-size: 12px;
+    color: rgba(245,240,232,0.55);
+    line-height: 1.6;
+  }
+ 
+  .step-desc code {
+    background: rgba(212,169,68,0.15);
+    color: var(--gold);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
+  }
+ 
+  /* ===== CHAT SCREEN ===== */
+  .chat-screen {
+    max-width: 680px;
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+  }
+ 
+  .chat-screen.active {
+    display: flex;
+    animation: fadeIn 0.6s ease forwards;
+  }
+ 
+  .chat-header {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 1.2rem 1.8rem;
+    backdrop-filter: blur(24px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+ 
+  .chat-header-left { display: flex; align-items: center; gap: 12px; }
+ 
+  .chat-avatar {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--torii-red), var(--torii-dark));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(192,57,43,0.4);
+  }
+ 
+  .chat-header-info h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cream);
+    letter-spacing: 0.02em;
+  }
+ 
+  .chat-header-info p {
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+ 
+  .dot-online {
+    width: 6px;
+    height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+ 
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+ 
+  /* package info bar */
+  .pkg-bar {
+    background: rgba(212,169,68,0.08);
+    border: 1px solid var(--glass-border);
+    border-top: none;
+    border-bottom: none;
+    padding: 10px 1.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: rgba(245,240,232,0.6);
+  }
+ 
+  .pkg-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+ 
+  .pkg-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+  }
+ 
+  /* chat body */
+  .chat-body {
+    background: rgba(8, 6, 3, 0.6);
+    border: 1px solid var(--glass-border);
+    border-top: none;
+    border-bottom: none;
+    min-height: 380px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding: 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    backdrop-filter: blur(16px);
+    scroll-behavior: smooth;
+  }
+ 
+  .chat-body::-webkit-scrollbar { width: 4px; }
+  .chat-body::-webkit-scrollbar-track { background: transparent; }
+  .chat-body::-webkit-scrollbar-thumb { background: rgba(212,169,68,0.3); border-radius: 2px; }
+ 
+  .chat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 280px;
+    gap: 12px;
+    color: rgba(245,240,232,0.3);
+  }
+ 
+  .chat-empty p { font-size: 13px; text-align: center; line-height: 1.6; }
+ 
+  /* messages */
+  .msg {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    animation: msgIn 0.3s ease forwards;
+  }
+ 
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+ 
+  .msg.user { flex-direction: row-reverse; }
+ 
+  .msg-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+ 
+  .msg.user .msg-avatar {
+    background: rgba(212,169,68,0.2);
+    border: 1px solid rgba(212,169,68,0.3);
+  }
+ 
+  .msg.bot .msg-avatar {
+    background: linear-gradient(135deg, var(--torii-red), var(--torii-dark));
+  }
+ 
+  .msg-bubble {
+    max-width: 78%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+ 
+  .msg.user .msg-bubble {
+    background: rgba(212,169,68,0.15);
+    border: 1px solid rgba(212,169,68,0.2);
+    border-top-right-radius: 4px;
+    color: var(--cream);
+    text-align: right;
+  }
+ 
+  .msg.bot .msg-bubble {
+    background: var(--glass-light);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-top-left-radius: 4px;
+    color: rgba(245,240,232,0.9);
+  }
+ 
+  .msg-meta {
+    font-size: 10px;
+    color: rgba(245,240,232,0.3);
+    margin-top: 4px;
+    display: block;
+  }
+ 
+  /* sentiment badge */
+  .sentiment-badge {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+ 
+  .badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+ 
+  .badge-pos { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+  .badge-neg { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+  .badge-info { background: rgba(212,169,68,0.12); color: var(--gold); border: 1px solid rgba(212,169,68,0.25); }
+ 
+  /* typing indicator */
+  .typing {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+    background: var(--glass-light);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    border-top-left-radius: 4px;
+    width: fit-content;
+  }
+ 
+  .typing span {
+    width: 6px;
+    height: 6px;
+    background: rgba(245,240,232,0.4);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+ 
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+ 
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+ 
+  /* ===== INPUT PANEL ===== */
+  .input-panel {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+    padding: 1.2rem 1.5rem 1.5rem;
+    backdrop-filter: blur(24px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+ 
+  /* link input section (shows only when no package) */
+  .link-section {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+ 
+  .link-section.hidden { display: none; }
+ 
+  .input-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+ 
+  .input-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(212,169,68,0.7);
+    text-transform: uppercase;
+  }
+ 
+  .styled-input {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(245,240,232,0.12);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--cream);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+ 
+  .styled-input:focus { border-color: rgba(212,169,68,0.5); }
+  .styled-input::placeholder { color: rgba(245,240,232,0.25); }
+ 
+  .btn-scrape {
+    align-self: flex-end;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, var(--torii-red), var(--torii-dark));
+    border: none;
+    border-radius: 10px;
+    color: var(--cream);
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(192,57,43,0.4);
+  }
+ 
+  .btn-scrape:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(192,57,43,0.5); }
+  .btn-scrape:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+ 
+  /* question row */
+  .question-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+ 
+  .question-row.hidden { display: none; }
+ 
+  .question-row .styled-input {
+    flex: 1;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+  }
+ 
+  .btn-ask {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--torii-red), var(--torii-dark));
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 10px rgba(192,57,43,0.4);
+  }
+ 
+  .btn-ask:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(192,57,43,0.5); }
+  .btn-ask:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+ 
+  .input-hint {
+    font-size: 11px;
+    color: rgba(245,240,232,0.3);
+    text-align: center;
+  }
+ 
+  /* ===== ERROR TOAST ===== */
+  .toast {
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: rgba(192,57,43,0.9);
+    border: 1px solid rgba(255,100,100,0.3);
+    border-radius: 10px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--cream);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+ 
+  .toast.show { transform: translateX(-50%) translateY(0); }
+ 
+  /* ===== LOADING SPINNER ===== */
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(245,240,232,0.2);
+    border-top-color: var(--cream);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: none;
+  }
+ 
+  @keyframes spin { to { transform: rotate(360deg); } }
+ 
+  /* ===== RESET LINK ===== */
+  .reset-link {
+    font-size: 12px;
+    color: rgba(212,169,68,0.6);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+ 
+  .reset-link:hover { color: var(--gold); }
+ 
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 480px) {
+    .glass-card { padding: 1.8rem 1.3rem; }
+    .chat-body { max-height: 340px; }
+    .welcome-title { font-size: 1.6rem; }
+  }
 </style>
 </head>
-
 <body>
-
-<div class="container">
-    <div class="chatbox">
-        <div class="title">🤖 Sentiment AI</div>
-
-        <div class="messages" id="messages"></div>
-
-        <div class="input-area">
-            <input type="text" id="input" placeholder="Tulis ulasan...">
-            <button onclick="sendMessage()">Kirim</button>
-        </div>
-    </div>
+ 
+<!-- BACKGROUND -->
+<div class="bg-layer">
+  <img class="bg-image" src="{{ url_for('static', filename='img/bg.jpg') }}" alt="bg"
+       onerror="this.style.display='none'">
+  <div class="bg-overlay"></div>
+  <div class="particles" id="particles"></div>
 </div>
-
+ 
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+ 
+<!-- APP -->
+<div class="app">
+ 
+  <!-- ========== SCREEN 1: WELCOME ========== -->
+  <div class="screen active" id="screen-welcome">
+    <div class="glass-card">
+      <div class="torii-icon">
+        <svg class="torii-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="12" width="52" height="6" rx="3" fill="#c0392b"/>
+          <rect x="10" y="20" width="44" height="4" rx="2" fill="#8b1a10"/>
+          <rect x="14" y="24" width="4" height="30" rx="2" fill="#c0392b"/>
+          <rect x="46" y="24" width="4" height="30" rx="2" fill="#c0392b"/>
+          <rect x="2" y="8" width="60" height="5" rx="2.5" fill="#d4a944"/>
+          <circle cx="32" cy="6" r="4" fill="#d4a944"/>
+        </svg>
+      </div>
+ 
+      <p class="welcome-kana">ようこそ · Welcome</p>
+      <h1 class="welcome-title">PlayStore <span>AI</span><br>Assistant</h1>
+      <p class="welcome-sub">Analisis ulasan aplikasi dengan kecerdasan buatan</p>
+ 
+      <div class="divider">
+        <div class="divider-line"></div>
+        <div class="divider-diamond"></div>
+        <div class="divider-line"></div>
+      </div>
+ 
+      <ul class="feature-list">
+        <li>
+          <div class="feat-num">一</div>
+          <span>Scraping ratusan ulasan Play Store secara otomatis dengan IndoBERT</span>
+        </li>
+        <li>
+          <div class="feat-num">二</div>
+          <span>Analisis sentimen positif & negatif berbasis machine learning</span>
+        </li>
+        <li>
+          <div class="feat-num">三</div>
+          <span>Tanya jawab bebas dengan AI tentang ulasan yang sudah dianalisis</span>
+        </li>
+      </ul>
+ 
+      <button class="btn-primary" onclick="goTo('tutorial')">
+        Mulai Sekarang →
+      </button>
+    </div>
+  </div>
+ 
+  <!-- ========== SCREEN 2: TUTORIAL ========== -->
+  <div class="screen" id="screen-tutorial">
+    <div class="glass-card">
+      <div class="torii-icon">
+        <svg class="torii-svg" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="12" width="52" height="6" rx="3" fill="#c0392b"/>
+          <rect x="10" y="20" width="44" height="4" rx="2" fill="#8b1a10"/>
+          <rect x="14" y="24" width="4" height="30" rx="2" fill="#c0392b"/>
+          <rect x="46" y="24" width="4" height="30" rx="2" fill="#c0392b"/>
+          <rect x="2" y="8" width="60" height="5" rx="2.5" fill="#d4a944"/>
+          <circle cx="32" cy="6" r="4" fill="#d4a944"/>
+        </svg>
+      </div>
+ 
+      <p class="screen-label">Panduan Penggunaan</p>
+      <h2 class="tutorial-title">Cara Menggunakan Chatbot</h2>
+      <p class="tutorial-desc">Ikuti langkah berikut sebelum mulai bertanya kepada AI</p>
+ 
+      <div class="step-card">
+        <div class="step-badge">1</div>
+        <div class="step-content">
+          <div class="step-title">Tempelkan link aplikasi Play Store</div>
+          <div class="step-desc">Masukkan URL aplikasi, contoh:<br>
+            <code>https://play.google.com/store/apps/details?id=com.shopee.id</code><br>
+            atau langsung package name: <code>com.shopee.id</code>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="step-card">
+        <div class="step-badge">2</div>
+        <div class="step-content">
+          <div class="step-title">Klik tombol "Start Scraping"</div>
+          <div class="step-desc">AI akan mengunduh dan menganalisis ratusan ulasan aplikasi tersebut secara otomatis menggunakan model IndoBERT. Proses ini membutuhkan beberapa saat.</div>
+        </div>
+      </div>
+ 
+      <div class="step-card">
+        <div class="step-badge">3</div>
+        <div class="step-content">
+          <div class="step-title">Mulai tanya jawab dengan AI</div>
+          <div class="step-desc">Setelah scraping selesai, kamu bisa bebas bertanya tentang ulasan aplikasi tersebut. Misalnya: <em>"Apa keluhan terbanyak pengguna?"</em></div>
+        </div>
+      </div>
+ 
+      <div class="step-card">
+        <div class="step-badge">4</div>
+        <div class="step-content">
+          <div class="step-title">Ganti aplikasi kapan saja</div>
+          <div class="step-desc">Kamu bisa terus bertanya tentang aplikasi yang sama tanpa perlu input link lagi. Untuk ganti aplikasi, klik tombol "Ganti Aplikasi".</div>
+        </div>
+      </div>
+ 
+      <button class="btn-primary" style="margin-top: 1.5rem;" onclick="goTo('chat')">
+        Mengerti, Mulai Chat →
+      </button>
+    </div>
+  </div>
+ 
+  <!-- ========== SCREEN 3: CHAT ========== -->
+  <div class="chat-screen" id="screen-chat">
+    <!-- header -->
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-avatar">
+          <svg width="20" height="20" viewBox="0 0 64 64" fill="none">
+            <rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/>
+            <rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/>
+            <rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/>
+          </svg>
+        </div>
+        <div class="chat-header-info">
+          <h3>PlayStore AI Assistant</h3>
+          <p><span class="dot-online"></span>Powered by GPT-4o mini · IndoBERT</p>
+        </div>
+      </div>
+      <a class="reset-link" href="/reset">Reset Sesi</a>
+    </div>
+ 
+    <!-- package info bar -->
+    <div class="pkg-bar" id="pkg-bar" style="display:none;">
+      <div class="pkg-name">
+        <div class="pkg-dot"></div>
+        <span id="pkg-label">Tidak ada aplikasi</span>
+      </div>
+      <button class="btn-secondary" onclick="changeApp()">Ganti Aplikasi</button>
+    </div>
+ 
+    <!-- messages -->
+    <div class="chat-body" id="chat-body">
+      <div class="chat-empty" id="chat-empty">
+        <svg width="36" height="36" viewBox="0 0 64 64" fill="none" opacity="0.4">
+          <rect x="6" y="12" width="52" height="6" rx="3" fill="#d4a944"/>
+          <rect x="14" y="18" width="4" height="26" rx="2" fill="#d4a944"/>
+          <rect x="46" y="18" width="4" height="26" rx="2" fill="#d4a944"/>
+        </svg>
+        <p>Masukkan link aplikasi Play Store<br>lalu klik <strong>Start Scraping</strong> untuk mulai</p>
+      </div>
+    </div>
+ 
+    <!-- input panel -->
+    <div class="input-panel">
+      <!-- link section -->
+      <div class="link-section" id="link-section">
+        <div class="input-wrap">
+          <label class="input-label">Link / Package Name Aplikasi</label>
+          <input type="text" class="styled-input" id="link-input"
+                 placeholder="https://play.google.com/store/apps/details?id=com.shopee.id"
+                 onkeydown="if(event.key==='Enter') submitFirst()">
+        </div>
+        <button class="btn-scrape" id="btn-scrape" onclick="submitFirst()">
+          <span id="scrape-label">Start Scraping</span>
+          <div class="spinner" id="scrape-spinner"></div>
+        </button>
+      </div>
+ 
+      <!-- question row -->
+      <div class="question-row hidden" id="question-row">
+        <textarea class="styled-input" id="query-input"
+                  placeholder="Tanyakan sesuatu tentang ulasan aplikasi ini..."
+                  rows="1"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitQuery()}"
+                  oninput="autoResize(this)"></textarea>
+        <button class="btn-ask" id="btn-ask" onclick="submitQuery()" title="Tanya AI">
+          <div class="spinner" id="ask-spinner"></div>
+          <svg id="ask-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5f0e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+ 
+      <p class="input-hint" id="input-hint">Masukkan link aplikasi terlebih dahulu sebelum bertanya</p>
+    </div>
+  </div>
+ 
+</div>
+ 
 <script>
-function sendMessage() {
-    let input = document.getElementById("input");
-    let messages = document.getElementById("messages");
-
-    if (input.value.trim() === "") return;
-
-    let userMsg = `<div>🧑 ${input.value}</div>`;
-    messages.innerHTML += userMsg;
-
-    // dummy response
-    let botMsg = `<div>🤖 Sentimen: positif</div>`;
-    messages.innerHTML += botMsg;
-
-    input.value = "";
-    messages.scrollTop = messages.scrollHeight;
+// ===== STATE =====
+let packageName = "{{ package_name or '' }}";
+let chatHistory = {{ chat_history | tojson }};
+ 
+// ===== INIT =====
+window.addEventListener('DOMContentLoaded', () => {
+  generateParticles();
+ 
+  // if already has package from session → go straight to chat
+  if (packageName) {
+    goTo('chat');
+    showPackageBar(packageName);
+    showQuestionRow();
+    renderHistory();
+  } else if (chatHistory.length > 0) {
+    goTo('chat');
+    renderHistory();
+  }
+});
+ 
+// ===== PARTICLES =====
+function generateParticles() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (8 + Math.random() * 12) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    p.style.width = p.style.height = (1.5 + Math.random() * 2.5) + 'px';
+    container.appendChild(p);
+  }
+}
+ 
+// ===== NAVIGATION =====
+function goTo(screen) {
+  document.querySelectorAll('.screen, .chat-screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('screen-' + screen);
+  if (el) el.classList.add('active');
+}
+ 
+// ===== PACKAGE BAR =====
+function showPackageBar(pkg) {
+  const bar = document.getElementById('pkg-bar');
+  const label = document.getElementById('pkg-label');
+  bar.style.display = 'flex';
+  label.textContent = pkg;
+}
+ 
+function showQuestionRow() {
+  document.getElementById('link-section').classList.add('hidden');
+  document.getElementById('question-row').classList.remove('hidden');
+  document.getElementById('input-hint').textContent = 'Tekan Enter untuk kirim · Shift+Enter untuk baris baru';
+}
+ 
+function changeApp() {
+  fetch('/reset');
+  packageName = '';
+  chatHistory = [];
+  document.getElementById('chat-body').innerHTML = `
+    <div class="chat-empty" id="chat-empty">
+      <svg width="36" height="36" viewBox="0 0 64 64" fill="none" opacity="0.4">
+        <rect x="6" y="12" width="52" height="6" rx="3" fill="#d4a944"/>
+        <rect x="14" y="18" width="4" height="26" rx="2" fill="#d4a944"/>
+        <rect x="46" y="18" width="4" height="26" rx="2" fill="#d4a944"/>
+      </svg>
+      <p>Masukkan link aplikasi Play Store<br>lalu klik <strong>Start Scraping</strong> untuk mulai</p>
+    </div>`;
+  document.getElementById('pkg-bar').style.display = 'none';
+  document.getElementById('question-row').classList.add('hidden');
+  document.getElementById('link-section').classList.remove('hidden');
+  document.getElementById('input-hint').textContent = 'Masukkan link aplikasi terlebih dahulu sebelum bertanya';
+  document.getElementById('link-input').value = '';
+}
+ 
+// ===== RENDER HISTORY =====
+function renderHistory() {
+  if (!chatHistory || chatHistory.length === 0) return;
+  const body = document.getElementById('chat-body');
+  body.innerHTML = '';
+  chatHistory.forEach(turn => {
+    appendMsg('user', turn.query);
+    const sentiment = turn.sentiment;
+    const stats = turn.stats || '';
+    appendMsg('bot', turn.answer, sentiment, stats, turn.token);
+  });
+  if (packageName) {
+    showPackageBar(packageName);
+    showQuestionRow();
+  }
+  scrollBottom();
+}
+ 
+// ===== SUBMIT FIRST (link + first question) =====
+async function submitFirst() {
+  const link = document.getElementById('link-input').value.trim();
+  if (!link) { showToast('Masukkan link aplikasi terlebih dahulu'); return; }
+ 
+  // show default query if none (scraping needs a query too)
+  const defaultQuery = 'Bagaimana sentimen pengguna secara keseluruhan?';
+  doSubmit(link, defaultQuery, true);
+}
+ 
+// ===== SUBMIT QUERY =====
+async function submitQuery() {
+  const query = document.getElementById('query-input').value.trim();
+  if (!query) return;
+  document.getElementById('query-input').value = '';
+  doSubmit(null, query, false);
+}
+ 
+// ===== CORE SUBMIT =====
+async function doSubmit(link, query, isFirst) {
+  setLoading(isFirst ? 'scrape' : 'ask', true);
+  removeEmpty();
+ 
+  // show user message
+  appendMsg('user', isFirst ? `[Link: ${link}]\n${query}` : query);
+  scrollBottom();
+ 
+  // typing indicator
+  const typingEl = addTyping();
+ 
+  // build form
+  const form = new FormData();
+  form.append('query', query);
+  if (link) form.append('link', link);
+ 
+  try {
+    const res = await fetch('/', { method: 'POST', body: form });
+    const html = await res.text();
+ 
+    // parse response — extract new last chat entry
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+ 
+    // get updated chat_history from hidden script tag we embed
+    const dataEl = doc.getElementById('__chat_data__');
+    if (dataEl) {
+      const data = JSON.parse(dataEl.textContent);
+      chatHistory = data.history;
+      packageName = data.package_name || packageName;
+ 
+      const last = chatHistory[chatHistory.length - 1];
+      typingEl.remove();
+      appendMsg('bot', last.answer, last.sentiment, last.stats, last.token);
+ 
+      if (packageName) {
+        showPackageBar(packageName);
+        showQuestionRow();
+      }
+    } else {
+      // fallback: show generic error
+      typingEl.remove();
+      appendMsg('bot', 'Terjadi kesalahan saat memproses. Silakan coba lagi.', null, '');
+    }
+  } catch(e) {
+    typingEl.remove();
+    appendMsg('bot', 'Koneksi gagal. Periksa server Flask dan coba lagi.', null, '');
+  }
+ 
+  setLoading(isFirst ? 'scrape' : 'ask', false);
+  scrollBottom();
+}
+ 
+// ===== APPEND MESSAGE =====
+function appendMsg(role, text, sentiment, stats, tokens) {
+  const body = document.getElementById('chat-body');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+ 
+  const avatar = role === 'user'
+    ? `<div class="msg-avatar">你</div>`
+    : `<div class="msg-avatar"><svg width="14" height="14" viewBox="0 0 64 64" fill="none"><rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/></svg></div>`;
+ 
+  let badgeHtml = '';
+  if (sentiment && role === 'bot') {
+    const pos = sentiment.good;
+    const neg = sentiment.bad;
+    badgeHtml = '<div class="sentiment-badge">';
+    if (pos) badgeHtml += `<span class="badge badge-pos">Positif ${pos.count} (${pos.percentage}%)</span>`;
+    if (neg) badgeHtml += `<span class="badge badge-neg">Negatif ${neg.count} (${neg.percentage}%)</span>`;
+    if (stats) badgeHtml += `<span class="badge badge-info">${stats}</span>`;
+    badgeHtml += '</div>';
+  }
+ 
+  const tokenStr = (tokens && role === 'bot') ? `<span class="msg-meta">${tokens} token</span>` : '';
+ 
+  div.innerHTML = avatar + `<div><div class="msg-bubble">${escHtml(text)}${badgeHtml}</div>${tokenStr}</div>`;
+  body.appendChild(div);
+}
+ 
+// ===== TYPING INDICATOR =====
+function addTyping() {
+  const body = document.getElementById('chat-body');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="msg-avatar"><svg width="14" height="14" viewBox="0 0 64 64" fill="none"><rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/></svg></div>
+    <div class="typing"><span></span><span></span><span></span></div>`;
+  body.appendChild(div);
+  scrollBottom();
+  return div;
+}
+ 
+// ===== HELPERS =====
+function removeEmpty() {
+  const el = document.getElementById('chat-empty');
+  if (el) el.remove();
+}
+ 
+function scrollBottom() {
+  const body = document.getElementById('chat-body');
+  body.scrollTop = body.scrollHeight;
+}
+ 
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+ 
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+ 
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+ 
+function setLoading(type, state) {
+  if (type === 'scrape') {
+    document.getElementById('btn-scrape').disabled = state;
+    document.getElementById('scrape-label').style.display = state ? 'none' : 'inline';
+    document.getElementById('scrape-spinner').style.display = state ? 'block' : 'none';
+  } else {
+    document.getElementById('btn-ask').disabled = state;
+    document.getElementById('ask-icon').style.display = state ? 'none' : 'block';
+    document.getElementById('ask-spinner').style.display = state ? 'block' : 'none';
+  }
 }
 </script>
-
+ 
+{# ===== HIDDEN DATA BLOCK for JS to read ===== #}
+<script type="application/json" id="__chat_data__">
+{
+  "history": {{ chat_history | tojson }},
+  "package_name": {{ (package_name or '') | tojson }}
+}
+</script>
+ 
 </body>
 </html>
