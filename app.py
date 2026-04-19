@@ -242,7 +242,7 @@ def ask():
 # ============================================================
 # ROUTE: Ganti aplikasi
 # ============================================================
-@app.route("/change", methods=["POST"])
+@app.route("/change", methods=["GET", "POST"])
 def change_app():
     session.pop("package_name", None)
     session.modified = True
@@ -252,7 +252,7 @@ def change_app():
 # ============================================================
 # ROUTE: Reset seluruh sesi
 # ============================================================
-@app.route("/reset")
+@app.route("/reset", methods=["GET", "POST"])
 def reset_chat():
     session.clear()
     return render_template("index.html", chat_history=[], package_name=None)
