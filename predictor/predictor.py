@@ -2,7 +2,7 @@ import torch
 import os
 from transformers import BertTokenizer, AutoModelForSequenceClassification
 
-HF_REPO_ID = "username/indobert-shopee-sentiment"  # ganti username kamu
+HF_REPO_ID = "soursupz/indobert-shopee-sentiment"  # ganti username kamu
 HF_TOKEN   = os.environ.get("HF_TOKEN")
 
 _device    = torch.device('cpu')
