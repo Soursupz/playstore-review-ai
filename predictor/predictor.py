@@ -1,8 +1,8 @@
 import torch
 import os
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import BertTokenizer, AutoModelForSequenceClassification
 
-HF_REPO_ID = "soursupz/indobert-shopee-sentiment"  # ganti username kamu
+HF_REPO_ID = "username/indobert-shopee-sentiment"  # ganti username kamu
 HF_TOKEN   = os.environ.get("HF_TOKEN")
 
 _device    = torch.device('cpu')
@@ -13,10 +13,10 @@ def load_model():
     global _tokenizer, _model
     if _model is None:
         print("🔄 Loading IndoBERT dari HuggingFace...")
-        _tokenizer = AutoTokenizer.from_pretrained(
+        # ✅ Pakai BertTokenizer langsung, lebih stabil
+        _tokenizer = BertTokenizer.from_pretrained(
             HF_REPO_ID,
-            token=HF_TOKEN,
-            use_fast=False # use slow tokenizer
+            token=HF_TOKEN
         )
         _model = AutoModelForSequenceClassification.from_pretrained(
             HF_REPO_ID,
@@ -28,7 +28,6 @@ def load_model():
         print("✅ Model loaded!")
     return _model, _tokenizer, _device
 
-# ✅ Preload saat module diimport (bukan saat request)
 print("🚀 Preloading model...")
 load_model()
 print("✅ Model siap!")
