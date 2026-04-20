@@ -189,7 +189,7 @@
  
   .scrape-success-notif { display:flex; align-items:center; gap:8px; justify-content:center; padding:8px 16px; background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.25); border-radius:20px; font-size:12px; color:#4ade80; margin:4px auto; width:fit-content; max-width:90%; animation:msgIn 0.3s ease; }
   .notif-icon { font-size:14px; }
- 
+
   .reset-link { font-size:12px; color:rgba(212,169,68,0.55); text-decoration:none; cursor:pointer; transition:color 0.2s; }
   .reset-link:hover { color:var(--gold); }
  
@@ -531,10 +531,10 @@ function startPolling(jobId, mode) {
  
         hideProgressCard();
         removeTyping();
- 
+
         // Tampilkan notif sukses scraping
         showSuccessNotif(r.stats);
- 
+
         if (mode === 'first') {
           // Bubble user "Hi PSAI👋" sebagai trigger sapaan bot
           appendMsg('user', 'Hi PSAI👋');
@@ -660,7 +660,7 @@ function showSuccessNotif(stats) {
   d.innerHTML = '<span>' + esc(stats || 'Scraping selesai') + '</span>';
   body.appendChild(d);
 }
- 
+
 function resetScrapeBtn() {
   document.getElementById('btn-scrape').disabled = false;
   document.getElementById('scrape-spin').style.display = 'none';
