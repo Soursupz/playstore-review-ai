@@ -143,7 +143,8 @@
   .msg.bot  .msg-avatar { background:linear-gradient(135deg,var(--red),var(--red-dark)); }
  
   .msg-bubble { max-width:78%; padding:11px 15px; border-radius:15px; font-size:13.5px; line-height:1.7; white-space:pre-wrap; word-break:break-word; }
-  .msg.user .msg-bubble { background:rgba(212,169,68,0.13); border:1px solid rgba(212,169,68,0.18); border-top-right-radius:4px; color:var(--cream); text-align:right; }
+  .msg.user .msg-bubble { background:rgba(212,169,68,0.13); border:1px solid rgba(212,169,68,0.18); border-top-right-radius:4px; color:var(--cream); text-align:right; white-space:nowrap; }
+  .msg.user .msg-bubble.long { white-space:pre-wrap; }
   .msg.bot  .msg-bubble { background:var(--glass-light); border:1px solid rgba(255,255,255,0.07); border-top-left-radius:4px; color:rgba(245,240,232,0.88); }
   .msg-meta { font-size:10px; color:rgba(245,240,232,0.28); margin-top:4px; display:block; }
  
@@ -631,7 +632,8 @@ function appendMsg(role, text, sentiment, stats, tokens) {
   }
  
   var meta = (tokens && role === 'bot') ? '<span class="msg-meta">'+tokens+' token</span>' : '';
-  div.innerHTML = av + '<div><div class="msg-bubble">'+esc(text)+badges+'</div>'+meta+'</div>';
+  var bubbleClass = 'msg-bubble' + (role === 'user' && text.length > 30 ? ' long' : '');
+  div.innerHTML = av + '<div><div class="'+bubbleClass+'">'+esc(text)+badges+'</div>'+meta+'</div>';
   body.appendChild(div);
 }
  
@@ -654,7 +656,8 @@ function showSuccessNotif(stats) {
   var body = document.getElementById('chat-body');
   var d = document.createElement('div');
   d.className = 'scrape-success-notif';
-  d.innerHTML = '<span class="notif-icon">✅</span><span>' + esc(stats || 'Scraping selesai') + '</span>';
+  // stats dari backend sudah mengandung ✅, langsung tampilkan
+  d.innerHTML = '<span>' + esc(stats || 'Scraping selesai') + '</span>';
   body.appendChild(d);
 }
  
