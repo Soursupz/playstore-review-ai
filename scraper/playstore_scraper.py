@@ -1,5 +1,5 @@
 from google_play_scraper import reviews, Sort
-from predictor.predictor import predict_sentiment
+from predictor.predictor import predict_sentiment, predict_batch
 
 def scrape_reviews(package_name, count=300):
     try:
@@ -31,29 +31,37 @@ def categorize_by_rating(raw_data):
 
 
 def categorize_by_model(raw_data):
+    if not raw_data:
+        return {"bad": [], "good": []}
+
+    # Pisahkan review kosong dulu
+    valid   = [(i, r) for i, r in enumerate(raw_data) if r.get("content", "").strip()]
+    invalid = [(i, r) for i, r in enumerate(raw_data) if not r.get("content", "").strip()]
+
+    print(f"📦 Total review: {len(raw_data)} | Valid: {len(valid)} | Kosong: {len(invalid)}")
+
+    # Batch predict semua sekaligus — jauh lebih cepat
+    texts   = [r.get("content", "").strip() for _, r in valid]
+    batch_results = predict_batch(texts)
+
     bad, good = [], []
 
-    for review in raw_data:
-        text = review.get("content", "").strip()
+    # Masukkan review kosong langsung ke bad
+    for _, review in invalid:
+        review["sentiment_label"]      = "negatif"
+        review["sentiment_confidence"] = 0.0
+        review["sentiment_scores"]     = {"negatif": 100.0, "positif": 0.0}
+        bad.append(review)
 
-        if not text:
-            bad.append(review)
-            continue
+    # Proses hasil batch
+    for (_, review), result in zip(valid, batch_results):
+        review["sentiment_label"]      = result["label"]
+        review["sentiment_confidence"] = result["confidence"]
+        review["sentiment_scores"]     = result["scores"]
 
-        try:
-            result = predict_sentiment(text)
-
-            review["sentiment_label"]      = result["label"]
-            review["sentiment_confidence"] = result["confidence"]
-            review["sentiment_scores"]     = result["scores"]
-
-            if result["label"] == "positif":
-                good.append(review)
-            else:
-                bad.append(review)
-
-        except Exception as e:
-            print(f"PREDICT ERROR: {e}")
+        if result["label"] == "positif":
+            good.append(review)
+        else:
             bad.append(review)
 
     print(f"✅ Kategorisasi IndoBERT selesai:")
