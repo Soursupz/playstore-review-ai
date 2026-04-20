@@ -535,8 +535,8 @@ function startPolling(jobId, mode) {
         showSuccessNotif(r.stats);
  
         if (mode === 'first') {
-          // Bubble user "HI PSAI" sebagai trigger sapaan bot
-          appendMsg('user', 'HI PSAI');
+          // Bubble user "Hi PSAI👋" sebagai trigger sapaan bot
+          appendMsg('user', 'Hi PSAI👋');
         }
  
         appendMsg('bot', r.answer, r.sentiment, r.stats, r.token);

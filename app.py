@@ -127,7 +127,7 @@ def start():
  
     data  = request.get_json()
     link  = (data.get("link") or "").strip()
-    query = (data.get("query") or "Bagaimana sentimen pengguna secara keseluruhan?").strip()
+    query = (data.get("query") or "Hi PSAI👋").strip()
  
     # Parse package name
     if "http" in link or link.startswith("www."):
