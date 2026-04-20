@@ -127,7 +127,7 @@ def start():
  
     data  = request.get_json()
     link  = (data.get("link") or "").strip()
-    query = (data.get("query") or "Hi PSAI👋").strip()
+    query = (data.get("query") or "Hi PSAI").strip()
  
     # Parse package name
     if "http" in link or link.startswith("www."):
@@ -137,6 +137,8 @@ def start():
             return jsonify({"error": "Link tidak valid. Hanya link aplikasi dari Google Play Store yang diterima. Contoh: https://play.google.com/store/apps/details?id=com.shopee.id"}), 400
         params = parse_qs(parsed.query)
         package_name = params.get("id", [""])[0]
+        # Bersihkan package name dari karakter tidak valid (jaga-jaga ada trailing params)
+        package_name = package_name.split("&")[0].strip()
         if not package_name:
             return jsonify({"error": "Link Play Store tidak mengandung ID aplikasi. Pastikan URL mengandung ?id=nama.paket.aplikasi"}), 400
     else:
