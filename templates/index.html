@@ -186,6 +186,9 @@
   .toast { position:fixed; top:1.4rem; left:50%; transform:translateX(-50%) translateY(-70px); background:rgba(192,57,43,0.92); border:1px solid rgba(255,100,100,0.28); border-radius:9px; padding:9px 18px; font-size:13px; color:var(--cream); backdrop-filter:blur(12px); z-index:100; transition:transform 0.3s; }
   .toast.show { transform:translateX(-50%) translateY(0); }
  
+  .scrape-success-notif { display:flex; align-items:center; gap:8px; justify-content:center; padding:8px 16px; background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.25); border-radius:20px; font-size:12px; color:#4ade80; margin:4px auto; width:fit-content; max-width:90%; animation:msgIn 0.3s ease; }
+  .notif-icon { font-size:14px; }
+ 
   .reset-link { font-size:12px; color:rgba(212,169,68,0.55); text-decoration:none; cursor:pointer; transition:color 0.2s; }
   .reset-link:hover { color:var(--gold); }
  
@@ -528,8 +531,12 @@ function startPolling(jobId, mode) {
         hideProgressCard();
         removeTyping();
  
+        // Tampilkan notif sukses scraping
+        showSuccessNotif(r.stats);
+ 
         if (mode === 'first') {
-          appendMsg('user', 'Bagaimana sentimen pengguna secara keseluruhan?');
+          // Bubble user "HI PSAI" sebagai trigger sapaan bot
+          appendMsg('user', 'HI PSAI');
         }
  
         appendMsg('bot', r.answer, r.sentiment, r.stats, r.token);
@@ -545,7 +552,11 @@ function startPolling(jobId, mode) {
  
         hideProgressCard();
         removeTyping();
-        appendMsg('bot', data.error || 'Terjadi kesalahan. Silakan coba lagi.', null, '', 0);
+        var errMsg = data.error || 'Terjadi kesalahan. Silakan coba lagi.';
+        appendMsg('bot',
+          '❌ Scraping gagal!\n\n' + errMsg +
+          '\n\nSilakan klik "Ganti Aplikasi" atau masukkan ulang link/package name yang valid.',
+          null, '', 0);
         scrollBottom();
         resetScrapeBtn();
         resetAskBtn();
@@ -638,6 +649,14 @@ function removeEmpty()  { var el=document.getElementById('chat-empty'); if(el) e
 function scrollBottom() { var b=document.getElementById('chat-body'); b.scrollTop=b.scrollHeight; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px'; }
+ 
+function showSuccessNotif(stats) {
+  var body = document.getElementById('chat-body');
+  var d = document.createElement('div');
+  d.className = 'scrape-success-notif';
+  d.innerHTML = '<span class="notif-icon">✅</span><span>' + esc(stats || 'Scraping selesai') + '</span>';
+  body.appendChild(d);
+}
  
 function resetScrapeBtn() {
   document.getElementById('btn-scrape').disabled = false;

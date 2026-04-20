@@ -59,7 +59,7 @@ def run_scraping_job(job_id, package_name, query, chat_history):
  
         sentiment      = sentiment_stats(categorized)
         safe_sentiment = sentiment if isinstance(sentiment, dict) else None
-        stats          = f"{len(raw_data)} review dianalisis"
+        stats          = f"✅ {len(raw_data)} data review berhasil diambil"
  
         with jobs_lock:
             jobs[job_id]["status"] = "generating"
@@ -130,15 +130,20 @@ def start():
     query = (data.get("query") or "Bagaimana sentimen pengguna secara keseluruhan?").strip()
  
     # Parse package name
-    if "http" in link:
-        parsed      = urlparse(link)
-        params      = parse_qs(parsed.query)
+    if "http" in link or link.startswith("www."):
+        # Harus dari play.google.com
+        parsed = urlparse(link if link.startswith("http") else "https://" + link)
+        if parsed.netloc not in ("play.google.com", "www.play.google.com"):
+            return jsonify({"error": "Link tidak valid. Hanya link aplikasi dari Google Play Store yang diterima. Contoh: https://play.google.com/store/apps/details?id=com.shopee.id"}), 400
+        params = parse_qs(parsed.query)
         package_name = params.get("id", [""])[0]
+        if not package_name:
+            return jsonify({"error": "Link Play Store tidak mengandung ID aplikasi. Pastikan URL mengandung ?id=nama.paket.aplikasi"}), 400
     else:
+        # Package name langsung, harus format com.xxx.xxx (mengandung titik, tanpa spasi)
         package_name = link.strip()
- 
-    if not package_name or len(package_name) < 3 or ' ' in package_name:
-        return jsonify({"error": "Link atau package name tidak valid."}), 400
+        if not package_name or ' ' in package_name or '.' not in package_name or len(package_name) < 5:
+            return jsonify({"error": "Input tidak valid. Masukkan link Play Store (https://play.google.com/...) atau package name aplikasi (contoh: com.shopee.id)"}), 400
  
     session["package_name"] = package_name
     session.modified = True
