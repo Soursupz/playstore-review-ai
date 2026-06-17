@@ -1,695 +1,1463 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PlayStore AI Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Zen+Kaku+Gothic+New:wght@300;400;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --red: #c0392b;
-    --red-dark: #8b1a10;
-    --gold: #d4a944;
-    --cream: #f5f0e8;
-    --glass: rgba(10, 8, 5, 0.58);
-    --glass-light: rgba(245, 240, 232, 0.07);
-    --glass-border: rgba(212, 169, 68, 0.22);
-  }
- 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
- 
-  body {
-    font-family: 'Zen Kaku Gothic New', sans-serif;
-    min-height: 100vh;
-    background: #0a0804;
-    color: var(--cream);
-    overflow-x: hidden;
-  }
- 
-  .bg-layer { position: fixed; inset: 0; z-index: 0; }
-  .bg-image  { width: 100%; height: 100%; object-fit: cover; object-position: center; filter: brightness(0.42) saturate(1.2); }
-  .bg-overlay {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse at 50% 0%, rgba(192,57,43,0.15) 0%, transparent 55%),
-      linear-gradient(to bottom, rgba(10,8,4,0.25) 0%, rgba(10,8,4,0.6) 60%, rgba(10,8,4,0.92) 100%);
-  }
- 
-  .particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-  .particle  { position: absolute; border-radius: 50%; background: rgba(212,169,68,0.55); animation: floatUp linear infinite; }
-  @keyframes floatUp {
-    0%   { transform: translateY(100vh) translateX(0) scale(1); opacity: 0; }
-    10%  { opacity: 1; }
-    90%  { opacity: 0.7; }
-    100% { transform: translateY(-10vh) translateX(30px) scale(0.2); opacity: 0; }
-  }
- 
-  .app { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
- 
-  .screen { display: none; width: 100%; max-width: 520px; animation: fadeIn 0.5s ease; }
-  .screen.active { display: flex; flex-direction: column; align-items: center; }
-  .chat-screen { display: none; width: 100%; max-width: 680px; flex-direction: column; animation: fadeIn 0.5s ease; }
-  .chat-screen.active { display: flex; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
- 
-  .glass-card {
-    width: 100%;
-    background: var(--glass);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 2.4rem 2rem;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow: 0 8px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(212,169,68,0.09);
-  }
- 
-  .torii-icon { display: flex; justify-content: center; margin-bottom: 1.4rem; }
-  .torii-svg  { width: 60px; height: 60px; filter: drop-shadow(0 0 10px rgba(192,57,43,0.55)); }
- 
-  .welcome-kana { font-family:'Noto Serif JP',serif; font-size:12px; font-weight:300; letter-spacing:0.45em; color:var(--gold); text-align:center; margin-bottom:0.4rem; }
-  .welcome-title { font-family:'Noto Serif JP',serif; font-size:1.9rem; font-weight:600; text-align:center; color:var(--cream); line-height:1.2; margin-bottom:0.4rem; }
-  .welcome-title span { color: var(--gold); }
-  .welcome-sub { font-size:13px; color:rgba(245,240,232,0.5); text-align:center; margin-bottom:1.8rem; }
- 
-  .divider { display:flex; align-items:center; gap:12px; margin-bottom:1.6rem; }
-  .divider-line { flex:1; height:1px; background:linear-gradient(to right,transparent,var(--glass-border),transparent); }
-  .divider-diamond { width:6px; height:6px; background:var(--gold); transform:rotate(45deg); opacity:0.55; }
- 
-  .feature-list { list-style:none; margin-bottom:1.8rem; }
-  .feature-list li { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid rgba(212,169,68,0.07); font-size:13.5px; color:rgba(245,240,232,0.78); line-height:1.5; }
-  .feature-list li:last-child { border-bottom:none; }
-  .feat-num { flex-shrink:0; width:22px; height:22px; border:1px solid var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--gold); font-family:'Noto Serif JP',serif; margin-top:1px; }
- 
-  .btn-primary { width:100%; padding:13px; background:linear-gradient(135deg,var(--red),var(--red-dark)); border:none; border-radius:12px; color:var(--cream); font-family:'Zen Kaku Gothic New',sans-serif; font-size:14px; font-weight:700; letter-spacing:0.07em; cursor:pointer; transition:all 0.25s; box-shadow:0 4px 18px rgba(192,57,43,0.38); }
-  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 26px rgba(192,57,43,0.52); }
-  .btn-primary:active { transform:translateY(0); }
- 
-  .btn-secondary { background:transparent; border:1px solid var(--glass-border); border-radius:8px; color:rgba(245,240,232,0.6); font-family:'Zen Kaku Gothic New',sans-serif; font-size:12px; padding:7px 14px; cursor:pointer; transition:all 0.2s; }
-  .btn-secondary:hover { border-color:var(--gold); color:var(--gold); }
- 
-  .screen-label { font-size:11px; letter-spacing:0.35em; color:var(--gold); text-transform:uppercase; text-align:center; margin-bottom:0.9rem; }
-  .tutorial-title { font-family:'Noto Serif JP',serif; font-size:1.35rem; font-weight:600; text-align:center; margin-bottom:0.35rem; }
-  .tutorial-desc  { font-size:13px; color:rgba(245,240,232,0.45); text-align:center; margin-bottom:1.8rem; }
- 
-  .step-card { display:flex; gap:14px; align-items:flex-start; padding:0.95rem 1.1rem; background:var(--glass-light); border:1px solid rgba(212,169,68,0.09); border-radius:12px; margin-bottom:10px; transition:border-color 0.25s; overflow:hidden; min-width:0; }
-  .step-card:hover { border-color:rgba(212,169,68,0.28); }
-  .step-card > div { min-width:0; flex:1; }
-  .step-badge { flex-shrink:0; width:30px; height:30px; background:linear-gradient(135deg,var(--red),var(--red-dark)); border-radius:7px; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif JP',serif; font-size:13px; font-weight:600; color:var(--cream); box-shadow:0 2px 8px rgba(192,57,43,0.3); }
-  .step-title { font-size:13.5px; font-weight:700; color:var(--cream); margin-bottom:3px; }
-  .step-desc  { font-size:12px; color:rgba(245,240,232,0.5); line-height:1.6; word-break:break-word; overflow-wrap:break-word; }
-  .step-desc code { background:rgba(212,169,68,0.13); color:var(--gold); padding:1px 5px; border-radius:4px; font-size:11px; font-family:monospace; word-break:break-all; overflow-wrap:break-word; white-space:normal; display:inline; }
- 
-  .chat-header { background:var(--glass); border:1px solid var(--glass-border); border-bottom:none; border-radius:20px 20px 0 0; padding:1.1rem 1.6rem; backdrop-filter:blur(24px); display:flex; align-items:center; justify-content:space-between; }
-  .chat-header-left { display:flex; align-items:center; gap:12px; }
-  .chat-avatar { width:36px; height:36px; background:linear-gradient(135deg,var(--red),var(--red-dark)); border-radius:9px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(192,57,43,0.4); }
-  .chat-header-info h3 { font-size:13.5px; font-weight:700; color:var(--cream); }
-  .chat-header-info p  { font-size:11px; color:var(--gold); display:flex; align-items:center; gap:5px; }
-  .dot-online { width:6px; height:6px; background:#4ade80; border-radius:50%; animation:pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
- 
-  .pkg-bar { display:none; background:rgba(212,169,68,0.07); border:1px solid var(--glass-border); border-top:none; border-bottom:none; padding:9px 1.6rem; align-items:center; justify-content:space-between; font-size:12px; color:rgba(245,240,232,0.55); }
-  .pkg-bar.visible { display:flex; }
-  .pkg-name { display:flex; align-items:center; gap:7px; }
-  .pkg-dot  { width:6px; height:6px; background:var(--gold); border-radius:50%; }
- 
-  .chat-body { background:rgba(8,6,3,0.62); border:1px solid var(--glass-border); border-top:none; border-bottom:none; min-height:380px; max-height:480px; overflow-y:auto; padding:1.4rem; display:flex; flex-direction:column; gap:14px; backdrop-filter:blur(16px); scroll-behavior:smooth; }
-  .chat-body::-webkit-scrollbar { width:3px; }
-  .chat-body::-webkit-scrollbar-thumb { background:rgba(212,169,68,0.28); border-radius:2px; }
- 
-  .chat-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:280px; gap:10px; color:rgba(245,240,232,0.28); }
-  .chat-empty p { font-size:13px; text-align:center; line-height:1.7; }
- 
-  /* PROGRESS CARD */
-  .progress-card { display:none; background:var(--glass-light); border:1px solid rgba(212,169,68,0.15); border-radius:14px; padding:1.2rem 1.4rem; flex-direction:column; gap:12px; }
-  .progress-card.visible { display:flex; }
-  .progress-header { display:flex; align-items:center; gap:9px; font-size:13px; color:rgba(245,240,232,0.7); }
-  .progress-header strong { color:var(--cream); }
-  .progress-steps { display:flex; flex-direction:column; gap:7px; margin-top:2px; }
-  .progress-step  { display:flex; align-items:center; gap:9px; font-size:12px; color:rgba(245,240,232,0.3); transition:color 0.3s; }
-  .progress-step.active { color:var(--gold); }
-  .progress-step.done   { color:#4ade80; }
-  .p-icon { width:16px; text-align:center; font-size:13px; flex-shrink:0; }
- 
-  /* spinner */
-  .spin { display:inline-block; width:13px; height:13px; border:2px solid rgba(212,169,68,0.25); border-top-color:var(--gold); border-radius:50%; animation:spin 0.75s linear infinite; }
-  @keyframes spin { to{transform:rotate(360deg)} }
- 
-  .msg { display:flex; gap:9px; align-items:flex-start; animation:msgIn 0.3s ease; }
-  .msg.user { flex-direction:row-reverse; }
-  @keyframes msgIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
- 
-  .msg-avatar { width:29px; height:29px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; }
-  .msg.user .msg-avatar { background:rgba(212,169,68,0.18); border:1px solid rgba(212,169,68,0.28); }
-  .msg.bot  .msg-avatar { background:linear-gradient(135deg,var(--red),var(--red-dark)); }
- 
-  .msg-bubble { max-width:78%; padding:11px 15px; border-radius:15px; font-size:13.5px; line-height:1.7; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; display:inline-block; }
-  .msg.user .msg-bubble { background:rgba(212,169,68,0.13); border:1px solid rgba(212,169,68,0.18); border-top-right-radius:4px; color:var(--cream); text-align:right; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlayStore AI Assistant</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Zen+Kaku+Gothic+New:wght@300;400;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --red: #c0392b;
+      --red-dark: #8b1a10;
+      --gold: #d4a944;
+      --cream: #f5f0e8;
+      --glass: rgba(10, 8, 5, 0.58);
+      --glass-light: rgba(245, 240, 232, 0.07);
+      --glass-border: rgba(212, 169, 68, 0.22);
+    }
 
-  .msg.bot  .msg-bubble { background:var(--glass-light); border:1px solid rgba(255,255,255,0.07); border-top-left-radius:4px; color:rgba(245,240,232,0.88); }
-  .msg-meta { font-size:10px; color:rgba(245,240,232,0.28); margin-top:4px; display:block; }
- 
-  .sentiment-badge { display:flex; gap:5px; flex-wrap:wrap; margin-top:7px; }
-  .badge { padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:0.03em; }
-  .badge-pos  { background:rgba(74,222,128,0.13);  color:#4ade80; border:1px solid rgba(74,222,128,0.22); }
-  .badge-neg  { background:rgba(248,113,113,0.13); color:#f87171; border:1px solid rgba(248,113,113,0.22); }
-  .badge-info { background:rgba(212,169,68,0.11);  color:var(--gold); border:1px solid rgba(212,169,68,0.22); }
- 
-  .typing { display:flex; gap:4px; padding:11px 15px; background:var(--glass-light); border:1px solid rgba(255,255,255,0.07); border-radius:15px; border-top-left-radius:4px; width:fit-content; }
-  .typing span { width:6px; height:6px; background:rgba(245,240,232,0.38); border-radius:50%; animation:bounce 1.1s infinite; }
-  .typing span:nth-child(2){animation-delay:.18s} .typing span:nth-child(3){animation-delay:.36s}
-  @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
- 
-  .input-panel { background:var(--glass); border:1px solid var(--glass-border); border-top:none; border-radius:0 0 20px 20px; padding:1.1rem 1.4rem 1.4rem; backdrop-filter:blur(24px); display:flex; flex-direction:column; gap:9px; }
- 
-  .link-section { display:flex; gap:8px; align-items:flex-end; }
-  .link-section.hidden { display:none; }
-  .input-wrap { flex:1; display:flex; flex-direction:column; gap:5px; }
-  .input-label { font-size:11px; letter-spacing:0.1em; color:rgba(212,169,68,0.65); text-transform:uppercase; }
- 
-  .styled-input { width:100%; background:rgba(255,255,255,0.055); border:1px solid rgba(245,240,232,0.11); border-radius:9px; padding:9px 13px; color:var(--cream); font-family:'Zen Kaku Gothic New',sans-serif; font-size:13px; outline:none; transition:border-color 0.2s; }
-  .styled-input:focus { border-color:rgba(212,169,68,0.48); }
-  .styled-input::placeholder { color:rgba(245,240,232,0.22); }
- 
-  .btn-scrape { flex-shrink:0; padding:9px 15px; height:40px; background:linear-gradient(135deg,var(--red),var(--red-dark)); border:none; border-radius:9px; color:var(--cream); font-family:'Zen Kaku Gothic New',sans-serif; font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; box-shadow:0 2px 10px rgba(192,57,43,0.38); display:flex; align-items:center; gap:6px; }
-  .btn-scrape:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 16px rgba(192,57,43,0.5); }
-  .btn-scrape:disabled { opacity:0.5; cursor:not-allowed; }
- 
-  .question-row { display:flex; gap:8px; align-items:flex-end; }
-  .question-row.hidden { display:none; }
-  .question-row .styled-input { flex:1; resize:none; min-height:42px; max-height:110px; }
- 
-  .btn-ask { flex-shrink:0; width:42px; height:42px; background:linear-gradient(135deg,var(--red),var(--red-dark)); border:none; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; box-shadow:0 2px 10px rgba(192,57,43,0.38); }
-  .btn-ask:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 16px rgba(192,57,43,0.5); }
-  .btn-ask:disabled { opacity:0.5; cursor:not-allowed; }
- 
-  .input-hint { font-size:11px; color:rgba(245,240,232,0.27); text-align:center; }
- 
-  .toast { position:fixed; top:1.4rem; left:50%; transform:translateX(-50%) translateY(-70px); background:rgba(192,57,43,0.92); border:1px solid rgba(255,100,100,0.28); border-radius:9px; padding:9px 18px; font-size:13px; color:var(--cream); backdrop-filter:blur(12px); z-index:100; transition:transform 0.3s; }
-  .toast.show { transform:translateX(-50%) translateY(0); }
- 
-  .scrape-success-notif { display:flex; align-items:center; gap:8px; justify-content:center; padding:8px 16px; background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.25); border-radius:20px; font-size:12px; color:#4ade80; margin:4px auto; width:fit-content; max-width:90%; animation:msgIn 0.3s ease; }
-  .notif-icon { font-size:14px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  .reset-link { font-size:12px; color:rgba(212,169,68,0.55); text-decoration:none; cursor:pointer; transition:color 0.2s; }
-  .reset-link:hover { color:var(--gold); }
- 
-  @media(max-width:480px){
-    .glass-card{padding:1.7rem 1.2rem}
-    .chat-body{max-height:320px}
-    .welcome-title{font-size:1.6rem}
-    .step-card{ gap:10px; padding:0.85rem 0.9rem; }
-    .step-desc code { font-size:10px; }
-  }
-</style>
+    body {
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      min-height: 100vh;
+      background: #0a0804;
+      color: var(--cream);
+      overflow-x: hidden;
+    }
+
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .bg-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      filter: brightness(0.42) saturate(1.2);
+    }
+
+    .bg-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(192, 57, 43, 0.15) 0%, transparent 55%),
+        linear-gradient(to bottom, rgba(10, 8, 4, 0.25) 0%, rgba(10, 8, 4, 0.6) 60%, rgba(10, 8, 4, 0.92) 100%);
+    }
+
+    .particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(212, 169, 68, 0.55);
+      animation: floatUp linear infinite;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(100vh) translateX(0) scale(1);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 0.7;
+      }
+
+      100% {
+        transform: translateY(-10vh) translateX(30px) scale(0.2);
+        opacity: 0;
+      }
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 520px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .chat-screen {
+      display: none;
+      width: 100%;
+      max-width: 680px;
+      flex-direction: column;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .chat-screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .glass-card {
+      width: 100%;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2.4rem 2rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 8px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(212, 169, 68, 0.09);
+    }
+
+    .torii-icon {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.4rem;
+    }
+
+    .torii-svg {
+      width: 60px;
+      height: 60px;
+      filter: drop-shadow(0 0 10px rgba(192, 57, 43, 0.55));
+    }
+
+    .welcome-kana {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 12px;
+      font-weight: 300;
+      letter-spacing: 0.45em;
+      color: var(--gold);
+      text-align: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .welcome-title {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.9rem;
+      font-weight: 600;
+      text-align: center;
+      color: var(--cream);
+      line-height: 1.2;
+      margin-bottom: 0.4rem;
+    }
+
+    .welcome-title span {
+      color: var(--gold);
+    }
+
+    .welcome-sub {
+      font-size: 13px;
+      color: rgba(245, 240, 232, 0.5);
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.6rem;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--glass-border), transparent);
+    }
+
+    .divider-diamond {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      transform: rotate(45deg);
+      opacity: 0.55;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin-bottom: 1.8rem;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(212, 169, 68, 0.07);
+      font-size: 13.5px;
+      color: rgba(245, 240, 232, 0.78);
+      line-height: 1.5;
+    }
+
+    .feature-list li:last-child {
+      border-bottom: none;
+    }
+
+    .feat-num {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--gold);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--gold);
+      font-family: 'Noto Serif JP', serif;
+      margin-top: 1px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      border: none;
+      border-radius: 12px;
+      color: var(--cream);
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      cursor: pointer;
+      transition: all 0.25s;
+      box-shadow: 0 4px 18px rgba(192, 57, 43, 0.38);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 26px rgba(192, 57, 43, 0.52);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      color: rgba(245, 240, 232, 0.6);
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-size: 12px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .screen-label {
+      font-size: 11px;
+      letter-spacing: 0.35em;
+      color: var(--gold);
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 0.9rem;
+    }
+
+    .tutorial-title {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 0.35rem;
+    }
+
+    .tutorial-desc {
+      font-size: 13px;
+      color: rgba(245, 240, 232, 0.45);
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+
+    .step-card {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 0.95rem 1.1rem;
+      background: var(--glass-light);
+      border: 1px solid rgba(212, 169, 68, 0.09);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      transition: border-color 0.25s;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .step-card:hover {
+      border-color: rgba(212, 169, 68, 0.28);
+    }
+
+    .step-card>div {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .step-badge {
+      flex-shrink: 0;
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Noto Serif JP', serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cream);
+      box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+    }
+
+    .step-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 3px;
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: rgba(245, 240, 232, 0.5);
+      line-height: 1.6;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .step-desc code {
+      background: rgba(212, 169, 68, 0.13);
+      color: var(--gold);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      word-break: break-all;
+      overflow-wrap: break-word;
+      white-space: normal;
+      display: inline;
+    }
+
+    .chat-header {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-bottom: none;
+      border-radius: 20px 20px 0 0;
+      padding: 1.1rem 1.6rem;
+      backdrop-filter: blur(24px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chat-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chat-avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(192, 57, 43, 0.4);
+    }
+
+    .chat-header-info h3 {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .chat-header-info p {
+      font-size: 11px;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .dot-online {
+      width: 6px;
+      height: 6px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.35
+      }
+    }
+
+    .pkg-bar {
+      display: none;
+      background: rgba(212, 169, 68, 0.07);
+      border: 1px solid var(--glass-border);
+      border-top: none;
+      border-bottom: none;
+      padding: 9px 1.6rem;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: rgba(245, 240, 232, 0.55);
+    }
+
+    .pkg-bar.visible {
+      display: flex;
+    }
+
+    .pkg-name {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .pkg-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+    }
+
+    .chat-body {
+      background: rgba(8, 6, 3, 0.62);
+      border: 1px solid var(--glass-border);
+      border-top: none;
+      border-bottom: none;
+      min-height: 380px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      backdrop-filter: blur(16px);
+      scroll-behavior: smooth;
+    }
+
+    .chat-body::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .chat-body::-webkit-scrollbar-thumb {
+      background: rgba(212, 169, 68, 0.28);
+      border-radius: 2px;
+    }
+
+    .chat-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+      gap: 10px;
+      color: rgba(245, 240, 232, 0.28);
+    }
+
+    .chat-empty p {
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    /* PROGRESS CARD */
+    .progress-card {
+      display: none;
+      background: var(--glass-light);
+      border: 1px solid rgba(212, 169, 68, 0.15);
+      border-radius: 14px;
+      padding: 1.2rem 1.4rem;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .progress-card.visible {
+      display: flex;
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: rgba(245, 240, 232, 0.7);
+    }
+
+    .progress-header strong {
+      color: var(--cream);
+    }
+
+    .progress-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 2px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+      color: rgba(245, 240, 232, 0.3);
+      transition: color 0.3s;
+    }
+
+    .progress-step.active {
+      color: var(--gold);
+    }
+
+    .progress-step.done {
+      color: #4ade80;
+    }
+
+    .p-icon {
+      width: 16px;
+      text-align: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* spinner */
+    .spin {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(212, 169, 68, 0.25);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .msg {
+      display: flex;
+      gap: 9px;
+      align-items: flex-start;
+      animation: msgIn 0.3s ease;
+    }
+
+    .msg.user {
+      flex-direction: row-reverse;
+    }
+
+    @keyframes msgIn {
+      from {
+        opacity: 0;
+        transform: translateY(7px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .msg-avatar {
+      width: 29px;
+      height: 29px;
+      border-radius: 7px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .msg.user .msg-avatar {
+      background: rgba(212, 169, 68, 0.18);
+      border: 1px solid rgba(212, 169, 68, 0.28);
+    }
+
+    .msg.bot .msg-avatar {
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+    }
+
+    .msg-bubble {
+      max-width: 78%;
+      padding: 11px 15px;
+      border-radius: 15px;
+      font-size: 13.5px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      display: inline-block;
+    }
+
+    .msg.user .msg-bubble {
+      background: rgba(212, 169, 68, 0.13);
+      border: 1px solid rgba(212, 169, 68, 0.18);
+      border-top-right-radius: 4px;
+      color: var(--cream);
+      text-align: right;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .msg.bot .msg-bubble {
+      background: var(--glass-light);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-top-left-radius: 4px;
+      color: rgba(245, 240, 232, 0.88);
+    }
+
+    .msg-meta {
+      font-size: 10px;
+      color: rgba(245, 240, 232, 0.28);
+      margin-top: 4px;
+      display: block;
+    }
+
+    .sentiment-badge {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: 7px;
+    }
+
+    .badge {
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-pos {
+      background: rgba(74, 222, 128, 0.13);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.22);
+    }
+
+    .badge-neg {
+      background: rgba(248, 113, 113, 0.13);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.22);
+    }
+
+    .badge-info {
+      background: rgba(212, 169, 68, 0.11);
+      color: var(--gold);
+      border: 1px solid rgba(212, 169, 68, 0.22);
+    }
+
+    .typing {
+      display: flex;
+      gap: 4px;
+      padding: 11px 15px;
+      background: var(--glass-light);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 15px;
+      border-top-left-radius: 4px;
+      width: fit-content;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      background: rgba(245, 240, 232, 0.38);
+      border-radius: 50%;
+      animation: bounce 1.1s infinite;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: .18s
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: .36s
+    }
+
+    @keyframes bounce {
+
+      0%,
+      60%,
+      100% {
+        transform: translateY(0)
+      }
+
+      30% {
+        transform: translateY(-6px)
+      }
+    }
+
+    .input-panel {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-top: none;
+      border-radius: 0 0 20px 20px;
+      padding: 1.1rem 1.4rem 1.4rem;
+      backdrop-filter: blur(24px);
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .link-section {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .link-section.hidden {
+      display: none;
+    }
+
+    .input-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .input-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: rgba(212, 169, 68, 0.65);
+      text-transform: uppercase;
+    }
+
+    .styled-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(245, 240, 232, 0.11);
+      border-radius: 9px;
+      padding: 9px 13px;
+      color: var(--cream);
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .styled-input:focus {
+      border-color: rgba(212, 169, 68, 0.48);
+    }
+
+    .styled-input::placeholder {
+      color: rgba(245, 240, 232, 0.22);
+    }
+
+    .btn-scrape {
+      flex-shrink: 0;
+      padding: 9px 15px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      border: none;
+      border-radius: 9px;
+      color: var(--cream);
+      font-family: 'Zen Kaku Gothic New', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      box-shadow: 0 2px 10px rgba(192, 57, 43, 0.38);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-scrape:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(192, 57, 43, 0.5);
+    }
+
+    .btn-scrape:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .question-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .question-row.hidden {
+      display: none;
+    }
+
+    .question-row .styled-input {
+      flex: 1;
+      resize: none;
+      min-height: 42px;
+      max-height: 110px;
+    }
+
+    .btn-ask {
+      flex-shrink: 0;
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      box-shadow: 0 2px 10px rgba(192, 57, 43, 0.38);
+    }
+
+    .btn-ask:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(192, 57, 43, 0.5);
+    }
+
+    .btn-ask:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .input-hint {
+      font-size: 11px;
+      color: rgba(245, 240, 232, 0.27);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      top: 1.4rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-70px);
+      background: rgba(192, 57, 43, 0.92);
+      border: 1px solid rgba(255, 100, 100, 0.28);
+      border-radius: 9px;
+      padding: 9px 18px;
+      font-size: 13px;
+      color: var(--cream);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      transition: transform 0.3s;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .scrape-success-notif {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      padding: 8px 16px;
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      border-radius: 20px;
+      font-size: 12px;
+      color: #4ade80;
+      margin: 4px auto;
+      width: fit-content;
+      max-width: 90%;
+      animation: msgIn 0.3s ease;
+    }
+
+    .notif-icon {
+      font-size: 14px;
+    }
+
+    .reset-link {
+      font-size: 12px;
+      color: rgba(212, 169, 68, 0.55);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .reset-link:hover {
+      color: var(--gold);
+    }
+
+    @media(max-width:480px) {
+      .glass-card {
+        padding: 1.7rem 1.2rem
+      }
+
+      .chat-body {
+        max-height: 320px
+      }
+
+      .welcome-title {
+        font-size: 1.6rem
+      }
+
+      .step-card {
+        gap: 10px;
+        padding: 0.85rem 0.9rem;
+      }
+
+      .step-desc code {
+        font-size: 10px;
+      }
+    }
+  </style>
 </head>
+
 <body>
- 
-<div class="bg-layer">
-  <img class="bg-image" src="{{ url_for('static', filename='img/bg.jpg') }}" alt=""
-       onerror="this.style.display='none'">
-  <div class="bg-overlay"></div>
-  <div class="particles" id="particles"></div>
-</div>
- 
-<div class="toast" id="toast"></div>
- 
-<div class="app">
- 
-  <!-- SCREEN 1: WELCOME -->
-  <div class="screen active" id="screen-welcome">
-    <div class="glass-card">
-      <div class="torii-icon">
-        <svg class="torii-svg" viewBox="0 0 64 64" fill="none">
-          <rect x="2"  y="7"  width="60" height="5"  rx="2.5" fill="#d4a944"/>
-          <rect x="6"  y="12" width="52" height="6"  rx="3"   fill="#c0392b"/>
-          <rect x="10" y="20" width="44" height="4"  rx="2"   fill="#8b1a10"/>
-          <rect x="14" y="24" width="4"  height="30" rx="2"   fill="#c0392b"/>
-          <rect x="46" y="24" width="4"  height="30" rx="2"   fill="#c0392b"/>
-          <circle cx="32" cy="5" r="4" fill="#d4a944"/>
-        </svg>
-      </div>
-      <p class="welcome-kana">ようこそ · Welcome</p>
-      <h1 class="welcome-title">PlayStore <span>AI</span><br>Assistant</h1>
-      <p class="welcome-sub">Analisis ulasan aplikasi dengan kecerdasan buatan</p>
-      <div class="divider"><div class="divider-line"></div><div class="divider-diamond"></div><div class="divider-line"></div></div>
-      <ul class="feature-list">
-        <li><div class="feat-num">一</div><span>Scraping ratusan ulasan Play Store secara otomatis dengan IndoBERT</span></li>
-        <li><div class="feat-num">二</div><span>Analisis sentimen positif &amp; negatif berbasis machine learning</span></li>
-        <li><div class="feat-num">三</div><span>Tanya jawab bebas dengan AI tentang ulasan yang sudah dianalisis</span></li>
-      </ul>
-      <button class="btn-primary" onclick="goTo('tutorial')">Mulai Sekarang →</button>
-    </div>
+
+  <div class="bg-layer">
+    <img class="bg-image" src="{{ url_for('static', filename='img/bg.jpg') }}" alt=""
+      onerror="this.style.display='none'">
+    <div class="bg-overlay"></div>
+    <div class="particles" id="particles"></div>
   </div>
- 
-  <!-- SCREEN 2: TUTORIAL -->
-  <div class="screen" id="screen-tutorial">
-    <div class="glass-card">
-      <div class="torii-icon">
-        <svg class="torii-svg" viewBox="0 0 64 64" fill="none">
-          <rect x="2"  y="7"  width="60" height="5"  rx="2.5" fill="#d4a944"/>
-          <rect x="6"  y="12" width="52" height="6"  rx="3"   fill="#c0392b"/>
-          <rect x="10" y="20" width="44" height="4"  rx="2"   fill="#8b1a10"/>
-          <rect x="14" y="24" width="4"  height="30" rx="2"   fill="#c0392b"/>
-          <rect x="46" y="24" width="4"  height="30" rx="2"   fill="#c0392b"/>
-          <circle cx="32" cy="5" r="4" fill="#d4a944"/>
-        </svg>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="app">
+
+    <!-- SCREEN 1: WELCOME -->
+    <div class="screen active" id="screen-welcome">
+      <div class="glass-card">
+        <div class="torii-icon">
+          <svg class="torii-svg" viewBox="0 0 64 64" fill="none">
+            <rect x="2" y="7" width="60" height="5" rx="2.5" fill="#d4a944" />
+            <rect x="6" y="12" width="52" height="6" rx="3" fill="#c0392b" />
+            <rect x="10" y="20" width="44" height="4" rx="2" fill="#8b1a10" />
+            <rect x="14" y="24" width="4" height="30" rx="2" fill="#c0392b" />
+            <rect x="46" y="24" width="4" height="30" rx="2" fill="#c0392b" />
+            <circle cx="32" cy="5" r="4" fill="#d4a944" />
+          </svg>
+        </div>
+        <p class="welcome-kana">ようこそ · Welcome</p>
+        <h1 class="welcome-title">PlayStore <span>AI</span><br>Assistant</h1>
+        <p class="welcome-sub">Analisis ulasan aplikasi dengan kecerdasan buatan</p>
+        <div class="divider">
+          <div class="divider-line"></div>
+          <div class="divider-diamond"></div>
+          <div class="divider-line"></div>
+        </div>
+        <ul class="feature-list">
+          <li>
+            <div class="feat-num">一</div><span>Scraping ratusan ulasan Play Store secara otomatis dengan IndoBERT</span>
+          </li>
+          <li>
+            <div class="feat-num">二</div><span>Analisis sentimen positif &amp; negatif berbasis machine learning</span>
+          </li>
+          <li>
+            <div class="feat-num">三</div><span>Tanya jawab bebas dengan AI tentang ulasan yang sudah dianalisis</span>
+          </li>
+        </ul>
+        <button class="btn-primary" onclick="goTo('tutorial')">Mulai Sekarang →</button>
       </div>
-      <p class="screen-label">Panduan Penggunaan</p>
-      <h2 class="tutorial-title">Cara Menggunakan Chatbot</h2>
-      <p class="tutorial-desc">Ikuti langkah berikut sebelum mulai bertanya kepada AI</p>
- 
-      <div class="step-card">
-        <div class="step-badge">1</div>
-        <div>
-          <div class="step-title">Tempelkan link aplikasi Play Store</div>
-          <div class="step-desc">Masukkan URL lengkap, contoh:<br>
-            <code>https://play.google.com/store/apps/details?id=com.shopee.id</code><br>
-            atau langsung package name: <code>com.shopee.id</code>
+    </div>
+
+    <!-- SCREEN 2: TUTORIAL -->
+    <div class="screen" id="screen-tutorial">
+      <div class="glass-card">
+        <div class="torii-icon">
+          <svg class="torii-svg" viewBox="0 0 64 64" fill="none">
+            <rect x="2" y="7" width="60" height="5" rx="2.5" fill="#d4a944" />
+            <rect x="6" y="12" width="52" height="6" rx="3" fill="#c0392b" />
+            <rect x="10" y="20" width="44" height="4" rx="2" fill="#8b1a10" />
+            <rect x="14" y="24" width="4" height="30" rx="2" fill="#c0392b" />
+            <rect x="46" y="24" width="4" height="30" rx="2" fill="#c0392b" />
+            <circle cx="32" cy="5" r="4" fill="#d4a944" />
+          </svg>
+        </div>
+        <p class="screen-label">Panduan Penggunaan</p>
+        <h2 class="tutorial-title">Cara Menggunakan Chatbot</h2>
+        <p class="tutorial-desc">Ikuti langkah berikut sebelum mulai bertanya kepada AI</p>
+
+        <div class="step-card">
+          <div class="step-badge">1</div>
+          <div>
+            <div class="step-title">Tempelkan link aplikasi Play Store</div>
+            <div class="step-desc">Masukkan URL lengkap, contoh:<br>
+              <code>https://play.google.com/store/apps/details?id=com.shopee.id</code><br>
+              atau langsung package name: <code>com.shopee.id</code>
+            </div>
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-badge">2</div>
+          <div>
+            <div class="step-title">Klik tombol "Start Scraping"</div>
+            <div class="step-desc">AI akan mengunduh &amp; menganalisis ratusan ulasan di background. Progress scraping,
+              analisis sentimen, dan generate AI bisa kamu pantau langsung.</div>
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-badge">3</div>
+          <div>
+            <div class="step-title">Tunggu selesai, lalu tanya AI</div>
+            <div class="step-desc">Setelah analisis selesai, kolom pertanyaan muncul otomatis. Tanyakan apa saja tentang
+              ulasan tersebut sepuasnya.</div>
+          </div>
+        </div>
+        <div class="step-card">
+          <div class="step-badge">4</div>
+          <div>
+            <div class="step-title">Ganti aplikasi kapan saja</div>
+            <div class="step-desc">Klik "Ganti Aplikasi" di header untuk menganalisis aplikasi lain dari awal.</div>
+          </div>
+        </div>
+
+        <button class="btn-primary" style="margin-top:1.4rem" onclick="goTo('chat')">Mengerti, Mulai Chat →</button>
+      </div>
+    </div>
+
+    <!-- SCREEN 3: CHAT -->
+    <div class="chat-screen" id="screen-chat">
+
+      <div class="chat-header">
+        <div class="chat-header-left">
+          <div class="chat-avatar">
+            <svg width="18" height="18" viewBox="0 0 64 64" fill="none">
+              <rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8" />
+              <rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8" />
+              <rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8" />
+            </svg>
+          </div>
+          <div class="chat-header-info">
+            <h3>PlayStore AI Assistant</h3>
+            <p><span class="dot-online"></span>GPT-4o mini · IndoBERT</p>
+          </div>
+        </div>
+        <a class="reset-link" href="/reset">Reset Sesi</a>
+      </div>
+
+      <div class="pkg-bar" id="pkg-bar">
+        <div class="pkg-name">
+          <div class="pkg-dot"></div><span id="pkg-label">—</span>
+        </div>
+        <button class="btn-secondary" onclick="changeApp()">Ganti Aplikasi</button>
+      </div>
+
+      <div class="chat-body" id="chat-body">
+        <div class="chat-empty" id="chat-empty">
+          <svg width="34" height="34" viewBox="0 0 64 64" fill="none" opacity="0.35">
+            <rect x="6" y="12" width="52" height="6" rx="3" fill="#d4a944" />
+            <rect x="14" y="18" width="4" height="26" rx="2" fill="#d4a944" />
+            <rect x="46" y="18" width="4" height="26" rx="2" fill="#d4a944" />
+          </svg>
+          <p>Masukkan link aplikasi Play Store<br>lalu klik <strong>Start Scraping</strong></p>
+        </div>
+
+        <!-- Progress card — tampil saat polling -->
+        <div class="progress-card" id="progress-card">
+          <div class="progress-header">
+            <div class="spin"></div>
+            <span id="progress-text">Memulai proses...</span>
+          </div>
+          <div class="progress-steps">
+            <div class="progress-step" id="pstep-1"><span class="p-icon">◌</span> Scraping ulasan dari Play Store</div>
+            <div class="progress-step" id="pstep-2"><span class="p-icon">◌</span> Analisis sentimen dengan IndoBERT
+            </div>
+            <div class="progress-step" id="pstep-3"><span class="p-icon">◌</span> Generate jawaban AI</div>
           </div>
         </div>
       </div>
-      <div class="step-card">
-        <div class="step-badge">2</div>
-        <div>
-          <div class="step-title">Klik tombol "Start Scraping"</div>
-          <div class="step-desc">AI akan mengunduh &amp; menganalisis ratusan ulasan di background. Progress scraping, analisis sentimen, dan generate AI bisa kamu pantau langsung.</div>
+
+      <div class="input-panel">
+        <div class="link-section" id="link-section">
+          <div class="input-wrap">
+            <label class="input-label">Link / Package Name Aplikasi</label>
+            <input type="text" class="styled-input" id="link-input"
+              placeholder="https://play.google.com/store/apps/details?id=com.shopee.id"
+              onkeydown="if(event.key==='Enter') startScraping()">
+          </div>
+          <button class="btn-scrape" id="btn-scrape" onclick="startScraping()">
+            <div class="spin" id="scrape-spin" style="display:none"></div>
+            <span id="scrape-label">Start Scraping</span>
+          </button>
         </div>
-      </div>
-      <div class="step-card">
-        <div class="step-badge">3</div>
-        <div>
-          <div class="step-title">Tunggu selesai, lalu tanya AI</div>
-          <div class="step-desc">Setelah analisis selesai, kolom pertanyaan muncul otomatis. Tanyakan apa saja tentang ulasan tersebut sepuasnya.</div>
+
+        <div class="question-row hidden" id="question-row">
+          <textarea class="styled-input" id="query-input" placeholder="Tanyakan sesuatu tentang ulasan aplikasi ini..."
+            rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitQuery()}"
+            oninput="autoResize(this)"></textarea>
+          <button class="btn-ask" id="btn-ask" onclick="submitQuery()">
+            <div class="spin" id="ask-spin" style="display:none;border-top-color:#f5f0e8"></div>
+            <svg id="ask-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f5f0e8" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
         </div>
+
+        <p class="input-hint" id="input-hint">Masukkan link aplikasi terlebih dahulu</p>
       </div>
-      <div class="step-card">
-        <div class="step-badge">4</div>
-        <div>
-          <div class="step-title">Ganti aplikasi kapan saja</div>
-          <div class="step-desc">Klik "Ganti Aplikasi" di header untuk menganalisis aplikasi lain dari awal.</div>
-        </div>
-      </div>
- 
-      <button class="btn-primary" style="margin-top:1.4rem" onclick="goTo('chat')">Mengerti, Mulai Chat →</button>
+
     </div>
   </div>
- 
-  <!-- SCREEN 3: CHAT -->
-  <div class="chat-screen" id="screen-chat">
- 
-    <div class="chat-header">
-      <div class="chat-header-left">
-        <div class="chat-avatar">
-          <svg width="18" height="18" viewBox="0 0 64 64" fill="none">
-            <rect x="6"  y="12" width="52" height="6"  rx="3" fill="#f5f0e8"/>
-            <rect x="14" y="18" width="4"  height="26" rx="2" fill="#f5f0e8"/>
-            <rect x="46" y="18" width="4"  height="26" rx="2" fill="#f5f0e8"/>
-          </svg>
-        </div>
-        <div class="chat-header-info">
-          <h3>PlayStore AI Assistant</h3>
-          <p><span class="dot-online"></span>GPT-4o mini · IndoBERT</p>
-        </div>
-      </div>
-      <a class="reset-link" href="/reset">Reset Sesi</a>
-    </div>
- 
-    <div class="pkg-bar" id="pkg-bar">
-      <div class="pkg-name"><div class="pkg-dot"></div><span id="pkg-label">—</span></div>
-      <button class="btn-secondary" onclick="changeApp()">Ganti Aplikasi</button>
-    </div>
- 
-    <div class="chat-body" id="chat-body">
-      <div class="chat-empty" id="chat-empty">
-        <svg width="34" height="34" viewBox="0 0 64 64" fill="none" opacity="0.35">
-          <rect x="6"  y="12" width="52" height="6"  rx="3" fill="#d4a944"/>
-          <rect x="14" y="18" width="4"  height="26" rx="2" fill="#d4a944"/>
-          <rect x="46" y="18" width="4"  height="26" rx="2" fill="#d4a944"/>
-        </svg>
-        <p>Masukkan link aplikasi Play Store<br>lalu klik <strong>Start Scraping</strong></p>
-      </div>
- 
-      <!-- Progress card — tampil saat polling -->
-      <div class="progress-card" id="progress-card">
-        <div class="progress-header">
-          <div class="spin"></div>
-          <span id="progress-text">Memulai proses...</span>
-        </div>
-        <div class="progress-steps">
-          <div class="progress-step" id="pstep-1"><span class="p-icon">◌</span> Scraping ulasan dari Play Store</div>
-          <div class="progress-step" id="pstep-2"><span class="p-icon">◌</span> Analisis sentimen dengan IndoBERT</div>
-          <div class="progress-step" id="pstep-3"><span class="p-icon">◌</span> Generate jawaban AI</div>
-        </div>
-      </div>
-    </div>
- 
-    <div class="input-panel">
-      <div class="link-section" id="link-section">
-        <div class="input-wrap">
-          <label class="input-label">Link / Package Name Aplikasi</label>
-          <input type="text" class="styled-input" id="link-input"
-                 placeholder="https://play.google.com/store/apps/details?id=com.shopee.id"
-                 onkeydown="if(event.key==='Enter') startScraping()">
-        </div>
-        <button class="btn-scrape" id="btn-scrape" onclick="startScraping()">
-          <div class="spin" id="scrape-spin" style="display:none"></div>
-          <span id="scrape-label">Start Scraping</span>
-        </button>
-      </div>
- 
-      <div class="question-row hidden" id="question-row">
-        <textarea class="styled-input" id="query-input"
-                  placeholder="Tanyakan sesuatu tentang ulasan aplikasi ini..."
-                  rows="1"
-                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitQuery()}"
-                  oninput="autoResize(this)"></textarea>
-        <button class="btn-ask" id="btn-ask" onclick="submitQuery()">
-          <div class="spin" id="ask-spin" style="display:none;border-top-color:#f5f0e8"></div>
-          <svg id="ask-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f5f0e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
-      </div>
- 
-      <p class="input-hint" id="input-hint">Masukkan link aplikasi terlebih dahulu</p>
-    </div>
- 
-  </div>
-</div>
- 
-<script>
-var packageName  = {{ (package_name or '') | tojson }};
-var chatHistory  = {{ chat_history | tojson }};
-var pollingTimer = null;
- 
-window.addEventListener('DOMContentLoaded', function() {
-  generateParticles();
-  if (packageName) {
-    goTo('chat');
-    showPkgBar(packageName);
-    showQuestionRow();
-    renderHistory();
-  } else if (chatHistory.length > 0) {
-    goTo('chat');
-    renderHistory();
-  }
-});
- 
-function generateParticles() {
-  var c = document.getElementById('particles');
-  for (var i = 0; i < 18; i++) {
-    var p = document.createElement('div');
-    p.className = 'particle';
-    p.style.left              = (Math.random()*100) + '%';
-    p.style.width             = (1.5+Math.random()*2) + 'px';
-    p.style.height            = p.style.width;
-    p.style.animationDuration = (9+Math.random()*11) + 's';
-    p.style.animationDelay   = (Math.random()*10) + 's';
-    c.appendChild(p);
-  }
-}
- 
-function goTo(s) {
-  document.querySelectorAll('.screen,.chat-screen').forEach(function(el){ el.classList.remove('active'); });
-  document.getElementById('screen-'+s).classList.add('active');
-}
- 
-function showPkgBar(pkg) {
-  document.getElementById('pkg-bar').classList.add('visible');
-  document.getElementById('pkg-label').textContent = pkg;
-}
- 
-function showQuestionRow() {
-  document.getElementById('link-section').classList.add('hidden');
-  document.getElementById('question-row').classList.remove('hidden');
-  document.getElementById('input-hint').textContent = 'Enter untuk kirim · Shift+Enter baris baru';
-}
- 
-function renderHistory() {
-  if (!chatHistory.length) return;
-  removeEmpty();
-  chatHistory.forEach(function(t) {
-    appendMsg('user', t.query);
-    appendMsg('bot', t.answer, t.sentiment, t.stats, t.token);
-  });
-  scrollBottom();
-}
- 
-// ===== START SCRAPING =====
-async function startScraping() {
-  var link = document.getElementById('link-input').value.trim();
-  if (!link) { showToast('Masukkan link atau package name aplikasi'); return; }
- 
-  document.getElementById('btn-scrape').disabled = true;
-  document.getElementById('scrape-spin').style.display = 'block';
-  document.getElementById('scrape-label').textContent  = 'Memulai...';
- 
-  removeEmpty();
-  showProgressCard();
- 
-  try {
-    var res  = await fetch('/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link: link })
-    });
-    var data = await res.json();
- 
-    if (data.error) {
-      hideProgressCard();
-      showToast(data.error);
-      resetScrapeBtn();
-      return;
-    }
- 
-    packageName = data.package_name;
-    showPkgBar(packageName);
-    startPolling(data.job_id, 'first');
- 
-  } catch(e) {
-    hideProgressCard();
-    showToast('Gagal menghubungi server. Coba lagi.');
-    resetScrapeBtn();
-  }
-}
- 
-// ===== SUBMIT QUERY =====
-async function submitQuery() {
-  var query = document.getElementById('query-input').value.trim();
-  if (!query) return;
- 
-  document.getElementById('query-input').value = '';
-  document.getElementById('btn-ask').disabled = true;
-  document.getElementById('ask-icon').style.display = 'none';
-  document.getElementById('ask-spin').style.display  = 'block';
- 
-  appendMsg('user', query);
-  scrollBottom();
-  addTyping();
- 
-  try {
-    var res  = await fetch('/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query })
-    });
-    var data = await res.json();
- 
-    if (data.error) {
-      removeTyping();
-      appendMsg('bot', data.error, null, '', 0);
-      resetAskBtn();
-      return;
-    }
- 
-    startPolling(data.job_id, 'ask');
- 
-  } catch(e) {
-    removeTyping();
-    appendMsg('bot', 'Koneksi gagal. Cek server Flask.', null, '', 0);
-    resetAskBtn();
-  }
-}
- 
-// ===== POLLING =====
-function startPolling(jobId, mode) {
-  if (pollingTimer) clearInterval(pollingTimer);
- 
-  pollingTimer = setInterval(async function() {
-    try {
-      var res  = await fetch('/poll/' + jobId);
-      var data = await res.json();
- 
-      updateProgressSteps(data.status);
- 
-      if (data.status === 'done') {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
- 
-        var r = data.data;
-        chatHistory.push(r);
- 
-        hideProgressCard();
-        removeTyping();
 
-        // Tampilkan notif sukses scraping
-        showSuccessNotif(r.stats);
+  <script>
+    var packageName = {{ (package_name or '') | tojson }};
+    var chatHistory = {{ chat_history | tojson }};
+    var pollingTimer = null;
 
-        if (mode === 'first') {
-          // Bubble user "Hi PSAI👋" sebagai trigger sapaan bot
-          appendMsg('user', 'Hi PSAI👋');
-        }
- 
-        appendMsg('bot', r.answer, r.sentiment, r.stats, r.token);
+    window.addEventListener('DOMContentLoaded', function () {
+      generateParticles();
+      if (packageName) {
+        goTo('chat');
+        showPkgBar(packageName);
         showQuestionRow();
-        scrollBottom();
+        renderHistory();
+      } else if (chatHistory.length > 0) {
+        goTo('chat');
+        renderHistory();
+      }
+    });
+
+    function generateParticles() {
+      var c = document.getElementById('particles');
+      for (var i = 0; i < 18; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = (Math.random() * 100) + '%';
+        p.style.width = (1.5 + Math.random() * 2) + 'px';
+        p.style.height = p.style.width;
+        p.style.animationDuration = (9 + Math.random() * 11) + 's';
+        p.style.animationDelay = (Math.random() * 10) + 's';
+        c.appendChild(p);
+      }
+    }
+
+    function goTo(s) {
+      document.querySelectorAll('.screen,.chat-screen').forEach(function (el) { el.classList.remove('active'); });
+      document.getElementById('screen-' + s).classList.add('active');
+    }
+
+    function showPkgBar(pkg) {
+      document.getElementById('pkg-bar').classList.add('visible');
+      document.getElementById('pkg-label').textContent = pkg;
+    }
+
+    function showQuestionRow() {
+      document.getElementById('link-section').classList.add('hidden');
+      document.getElementById('question-row').classList.remove('hidden');
+      document.getElementById('input-hint').textContent = 'Enter untuk kirim · Shift+Enter baris baru';
+    }
+
+    function renderHistory() {
+      if (!chatHistory.length) return;
+      removeEmpty();
+      chatHistory.forEach(function (t) {
+        appendMsg('user', t.query);
+        appendMsg('bot', t.answer, t.sentiment, t.stats, t.token);
+      });
+      scrollBottom();
+    }
+
+    // ===== START SCRAPING =====
+    async function startScraping() {
+      var link = document.getElementById('link-input').value.trim();
+      if (!link) { showToast('Masukkan link atau package name aplikasi'); return; }
+
+      document.getElementById('btn-scrape').disabled = true;
+      document.getElementById('scrape-spin').style.display = 'block';
+      document.getElementById('scrape-label').textContent = 'Memulai...';
+
+      removeEmpty();
+      showProgressCard();
+
+      try {
+        var res = await fetch('/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link: link })
+        });
+        var data = await res.json();
+
+        if (data.error) {
+          hideProgressCard();
+          showToast(data.error);
+          resetScrapeBtn();
+          return;
+        }
+
+        packageName = data.package_name;
+        showPkgBar(packageName);
+        startPolling(data.job_id, 'first');
+
+      } catch (e) {
+        hideProgressCard();
+        showToast('Gagal menghubungi server. Coba lagi.');
         resetScrapeBtn();
+      }
+    }
+
+    // ===== SUBMIT QUERY =====
+    async function submitQuery() {
+      var query = document.getElementById('query-input').value.trim();
+      if (!query) return;
+
+      document.getElementById('query-input').value = '';
+      document.getElementById('btn-ask').disabled = true;
+      document.getElementById('ask-icon').style.display = 'none';
+      document.getElementById('ask-spin').style.display = 'block';
+
+      appendMsg('user', query);
+      scrollBottom();
+      addTyping();
+
+      try {
+        var res = await fetch('/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        });
+        var data = await res.json();
+
+        if (data.error) {
+          removeTyping();
+          appendMsg('bot', data.error, null, '', 0);
+          resetAskBtn();
+          return;
+        }
+
+        startPolling(data.job_id, 'ask');
+
+      } catch (e) {
+        removeTyping();
+        appendMsg('bot', 'Koneksi gagal. Cek server Flask.', null, '', 0);
         resetAskBtn();
       }
- 
-      else if (data.status === 'error') {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
- 
-        hideProgressCard();
-        removeTyping();
-        var errMsg = data.error || 'Terjadi kesalahan. Silakan coba lagi.';
-        appendMsg('bot',
-          '❌ Scraping gagal!\n\n' + errMsg +
-          '\n\nSilakan klik "Ganti Aplikasi" atau masukkan ulang link/package name yang valid.',
-          null, '', 0);
-        scrollBottom();
-        resetScrapeBtn();
-        resetAskBtn();
- 
-        if (mode === 'first') {
-          packageName = '';
-          document.getElementById('pkg-bar').classList.remove('visible');
-          document.getElementById('link-section').classList.remove('hidden');
-          document.getElementById('question-row').classList.add('hidden');
-          document.getElementById('input-hint').textContent = 'Masukkan link aplikasi terlebih dahulu';
+    }
+
+    // ===== POLLING =====
+    function startPolling(jobId, mode) {
+      if (pollingTimer) clearInterval(pollingTimer);
+
+      pollingTimer = setInterval(async function () {
+        try {
+          var res = await fetch('/poll/' + jobId);
+          var data = await res.json();
+
+          updateProgressSteps(data.status);
+
+          if (data.status === 'done') {
+            clearInterval(pollingTimer);
+            pollingTimer = null;
+
+            var r = data.data;
+            chatHistory.push(r);
+
+            hideProgressCard();
+            removeTyping();
+
+            // Tampilkan notif sukses scraping
+            showSuccessNotif(r.stats);
+
+            if (mode === 'first') {
+              // Bubble user "Hi PSAI👋" sebagai trigger sapaan bot
+              appendMsg('user', 'Hi PSAI👋');
+            }
+
+            appendMsg('bot', r.answer, r.sentiment, r.stats, r.token);
+            showQuestionRow();
+            scrollBottom();
+            resetScrapeBtn();
+            resetAskBtn();
+          }
+
+          else if (data.status === 'error') {
+            clearInterval(pollingTimer);
+            pollingTimer = null;
+
+            hideProgressCard();
+            removeTyping();
+            var errMsg = data.error || 'Terjadi kesalahan. Silakan coba lagi.';
+            appendMsg('bot',
+              '❌ Scraping gagal!\n\n' + errMsg +
+              '\n\nSilakan klik "Ganti Aplikasi" atau masukkan ulang link/package name yang valid.',
+              null, '', 0);
+            scrollBottom();
+            resetScrapeBtn();
+            resetAskBtn();
+
+            if (mode === 'first') {
+              packageName = '';
+              document.getElementById('pkg-bar').classList.remove('visible');
+              document.getElementById('link-section').classList.remove('hidden');
+              document.getElementById('question-row').classList.add('hidden');
+              document.getElementById('input-hint').textContent = 'Masukkan link aplikasi terlebih dahulu';
+            }
+          }
+
+        } catch (e) { /* network hiccup, keep polling */ }
+      }, 3000);
+    }
+
+    // ===== PROGRESS =====
+    function showProgressCard() { document.getElementById('progress-card').classList.add('visible'); updateProgressSteps('queued'); }
+    function hideProgressCard() { document.getElementById('progress-card').classList.remove('visible'); }
+
+    var stepConfig = {
+      queued: { text: 'Mengantre proses...', done: 0 },
+      scraping: { text: 'Scraping ulasan dari Play Store...', done: 0, active: 1 },
+      analyzing: { text: 'Menganalisis sentimen dengan IndoBERT...', done: 1, active: 2 },
+      generating: { text: 'Generating jawaban AI...', done: 2, active: 3 },
+      done: { text: 'Selesai!', done: 3 }
+    };
+
+    function updateProgressSteps(status) {
+      var cfg = stepConfig[status] || stepConfig.queued;
+      document.getElementById('progress-text').textContent = cfg.text;
+
+      for (var i = 1; i <= 3; i++) {
+        var el = document.getElementById('pstep-' + i);
+        var icon = el.querySelector('.p-icon');
+
+        if (i < (cfg.active || 0)) {
+          el.className = 'progress-step done';
+          icon.textContent = '✓';
+        } else if (i === (cfg.active || 0)) {
+          el.className = 'progress-step active';
+          icon.innerHTML = '<span class="spin" style="width:11px;height:11px;border-width:1.5px;vertical-align:middle;display:inline-block"></span>';
+        } else if (i <= (cfg.done || 0)) {
+          el.className = 'progress-step done';
+          icon.textContent = '✓';
+        } else {
+          el.className = 'progress-step';
+          icon.textContent = '◌';
         }
       }
- 
-    } catch(e) { /* network hiccup, keep polling */ }
-  }, 3000);
-}
- 
-// ===== PROGRESS =====
-function showProgressCard() { document.getElementById('progress-card').classList.add('visible'); updateProgressSteps('queued'); }
-function hideProgressCard() { document.getElementById('progress-card').classList.remove('visible'); }
- 
-var stepConfig = {
-  queued:     { text: 'Mengantre proses...', done: 0 },
-  scraping:   { text: 'Scraping ulasan dari Play Store...', done: 0, active: 1 },
-  analyzing:  { text: 'Menganalisis sentimen dengan IndoBERT...', done: 1, active: 2 },
-  generating: { text: 'Generating jawaban AI...', done: 2, active: 3 },
-  done:       { text: 'Selesai!', done: 3 }
-};
- 
-function updateProgressSteps(status) {
-  var cfg = stepConfig[status] || stepConfig.queued;
-  document.getElementById('progress-text').textContent = cfg.text;
- 
-  for (var i = 1; i <= 3; i++) {
-    var el   = document.getElementById('pstep-' + i);
-    var icon = el.querySelector('.p-icon');
- 
-    if (i < (cfg.active || 0)) {
-      el.className = 'progress-step done';
-      icon.textContent = '✓';
-    } else if (i === (cfg.active || 0)) {
-      el.className = 'progress-step active';
-      icon.innerHTML = '<span class="spin" style="width:11px;height:11px;border-width:1.5px;vertical-align:middle;display:inline-block"></span>';
-    } else if (i <= (cfg.done || 0)) {
-      el.className = 'progress-step done';
-      icon.textContent = '✓';
-    } else {
-      el.className = 'progress-step';
-      icon.textContent = '◌';
     }
-  }
-}
- 
-// ===== MESSAGES =====
-function appendMsg(role, text, sentiment, stats, tokens) {
-  var body = document.getElementById('chat-body');
-  var div  = document.createElement('div');
-  div.className = 'msg ' + role;
- 
-  var av = role === 'user'
-    ? '<div class="msg-avatar">你</div>'
-    : '<div class="msg-avatar"><svg width="13" height="13" viewBox="0 0 64 64" fill="none"><rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/></svg></div>';
- 
-  var badges = '';
-  if (role === 'bot' && sentiment) {
-    var g = sentiment.good, b = sentiment.bad;
-    badges = '<div class="sentiment-badge">';
-    if (g) badges += '<span class="badge badge-pos">Positif '+g.count+' ('+g.percentage+'%)</span>';
-    if (b) badges += '<span class="badge badge-neg">Negatif '+b.count+' ('+b.percentage+'%)</span>';
-    if (stats) badges += '<span class="badge badge-info">'+esc(stats)+'</span>';
-    badges += '</div>';
-  }
- 
-  var meta = (tokens && role === 'bot') ? '<span class="msg-meta">'+tokens+' token</span>' : '';
-  div.innerHTML = av + '<div><div class="msg-bubble">'+esc(text)+badges+'</div>'+meta+'</div>';
-  body.appendChild(div);
-}
- 
-function addTyping() {
-  var body = document.getElementById('chat-body');
-  var d = document.createElement('div');
-  d.className = 'msg bot'; d.id = 'typing-el';
-  d.innerHTML = '<div class="msg-avatar"><svg width="13" height="13" viewBox="0 0 64 64" fill="none"><rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/></svg></div><div class="typing"><span></span><span></span><span></span></div>';
-  body.appendChild(d);
-  scrollBottom();
-}
- 
-function removeTyping() { var el=document.getElementById('typing-el'); if(el) el.remove(); }
-function removeEmpty()  { var el=document.getElementById('chat-empty'); if(el) el.remove(); }
-function scrollBottom() { var b=document.getElementById('chat-body'); b.scrollTop=b.scrollHeight; }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
-function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,110)+'px'; }
- 
-function showSuccessNotif(stats) {
-  var body = document.getElementById('chat-body');
-  var d = document.createElement('div');
-  d.className = 'scrape-success-notif';
-  // stats dari backend sudah mengandung ✅, langsung tampilkan
-  d.innerHTML = '<span>' + esc(stats || 'Scraping selesai') + '</span>';
-  body.appendChild(d);
-}
 
-function resetScrapeBtn() {
-  document.getElementById('btn-scrape').disabled = false;
-  document.getElementById('scrape-spin').style.display = 'none';
-  document.getElementById('scrape-label').textContent  = 'Start Scraping';
-}
-function resetAskBtn() {
-  document.getElementById('btn-ask').disabled = false;
-  document.getElementById('ask-spin').style.display  = 'none';
-  document.getElementById('ask-icon').style.display  = 'block';
-}
- 
-function showToast(msg) {
-  var t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); }, 3200);
-}
- 
-async function changeApp() {
-  if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
-  await fetch('/change', { method:'POST' });
-  packageName = ''; chatHistory = [];
-  document.getElementById('chat-body').innerHTML =
-    '<div class="chat-empty" id="chat-empty"><svg width="34" height="34" viewBox="0 0 64 64" fill="none" opacity="0.35"><rect x="6" y="12" width="52" height="6" rx="3" fill="#d4a944"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#d4a944"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#d4a944"/></svg><p>Masukkan link aplikasi Play Store<br>lalu klik <strong>Start Scraping</strong></p></div>';
-  document.getElementById('pkg-bar').classList.remove('visible');
-  document.getElementById('question-row').classList.add('hidden');
-  document.getElementById('link-section').classList.remove('hidden');
-  document.getElementById('input-hint').textContent = 'Masukkan link aplikasi terlebih dahulu';
-  document.getElementById('link-input').value = '';
-  resetScrapeBtn();
-}
-</script>
+    // ===== MESSAGES =====
+    function appendMsg(role, text, sentiment, stats, tokens) {
+      var body = document.getElementById('chat-body');
+      var div = document.createElement('div');
+      div.className = 'msg ' + role;
+
+      var av = role === 'user'
+        ? '<div class="msg-avatar">你</div>'
+        : '<div class="msg-avatar"><svg width="13" height="13" viewBox="0 0 64 64" fill="none"><rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/></svg></div>';
+
+      var badges = '';
+      if (role === 'bot' && sentiment) {
+        var g = sentiment.good, b = sentiment.bad;
+        badges = '<div class="sentiment-badge">';
+        if (g) badges += '<span class="badge badge-pos">Positif ' + g.count + ' (' + g.percentage + '%)</span>';
+        if (b) badges += '<span class="badge badge-neg">Negatif ' + b.count + ' (' + b.percentage + '%)</span>';
+        if (stats) badges += '<span class="badge badge-info">' + esc(stats) + '</span>';
+        badges += '</div>';
+      }
+
+      var meta = (tokens && role === 'bot') ? '<span class="msg-meta">' + tokens + ' token</span>' : '';
+      div.innerHTML = av + '<div><div class="msg-bubble">' + esc(text) + badges + '</div>' + meta + '</div>';
+      body.appendChild(div);
+    }
+
+    function addTyping() {
+      var body = document.getElementById('chat-body');
+      var d = document.createElement('div');
+      d.className = 'msg bot'; d.id = 'typing-el';
+      d.innerHTML = '<div class="msg-avatar"><svg width="13" height="13" viewBox="0 0 64 64" fill="none"><rect x="6" y="12" width="52" height="6" rx="3" fill="#f5f0e8"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#f5f0e8"/></svg></div><div class="typing"><span></span><span></span><span></span></div>';
+      body.appendChild(d);
+      scrollBottom();
+    }
+
+    function removeTyping() { var el = document.getElementById('typing-el'); if (el) el.remove(); }
+    function removeEmpty() { var el = document.getElementById('chat-empty'); if (el) el.remove(); }
+    function scrollBottom() { var b = document.getElementById('chat-body'); b.scrollTop = b.scrollHeight; }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>'); }
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 110) + 'px'; }
+
+    function showSuccessNotif(stats) {
+      var body = document.getElementById('chat-body');
+      var d = document.createElement('div');
+      d.className = 'scrape-success-notif';
+      // stats dari backend sudah mengandung ✅, langsung tampilkan
+      d.innerHTML = '<span>' + esc(stats || 'Scraping selesai') + '</span>';
+      body.appendChild(d);
+    }
+
+    function resetScrapeBtn() {
+      document.getElementById('btn-scrape').disabled = false;
+      document.getElementById('scrape-spin').style.display = 'none';
+      document.getElementById('scrape-label').textContent = 'Start Scraping';
+    }
+    function resetAskBtn() {
+      document.getElementById('btn-ask').disabled = false;
+      document.getElementById('ask-spin').style.display = 'none';
+      document.getElementById('ask-icon').style.display = 'block';
+    }
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 3200);
+    }
+
+    async function changeApp() {
+      if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+      await fetch('/change', { method: 'POST' });
+      packageName = ''; chatHistory = [];
+      document.getElementById('chat-body').innerHTML =
+        '<div class="chat-empty" id="chat-empty"><svg width="34" height="34" viewBox="0 0 64 64" fill="none" opacity="0.35"><rect x="6" y="12" width="52" height="6" rx="3" fill="#d4a944"/><rect x="14" y="18" width="4" height="26" rx="2" fill="#d4a944"/><rect x="46" y="18" width="4" height="26" rx="2" fill="#d4a944"/></svg><p>Masukkan link aplikasi Play Store<br>lalu klik <strong>Start Scraping</strong></p></div>';
+      document.getElementById('pkg-bar').classList.remove('visible');
+      document.getElementById('question-row').classList.add('hidden');
+      document.getElementById('link-section').classList.remove('hidden');
+      document.getElementById('input-hint').textContent = 'Masukkan link aplikasi terlebih dahulu';
+      document.getElementById('link-input').value = '';
+      resetScrapeBtn();
+    }
+  </script>
 </body>
+
 </html>

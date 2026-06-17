@@ -1,0 +1,2 @@
+model_version,dataset,labeling_method,test_accuracy,test_f1_macro,test_precision_macro,test_recall_macro,epochs_trained,best_val_f1
+v4,e-commerce_reviews_relabeled.csv,text-based + emoji mapping,0.8533568904593639,0.8490133059073086,0.8483928817767968,0.8496852409396081,7,0.8553506728778468
