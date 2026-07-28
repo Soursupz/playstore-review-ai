@@ -13,7 +13,8 @@ def search_reviews(query, df, top_n=2):
 
     top_indices = similarity[0].argsort()[-top_n:][::-1]
 
-    return df.iloc[top_indices]["review"].tolist()
+    records = df.iloc[top_indices].to_dict(orient="records")
+    return records
 
 def search_categorized(query, categorized_dfs, top_n=2):
     """

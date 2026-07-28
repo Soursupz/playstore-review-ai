@@ -11,13 +11,12 @@ def preprocess_reviews(raw_data):
     if not raw_data:
         return pd.DataFrame()
 
-    df = pd.DataFrame(raw_data)
+    df = pd.DataFrame(raw_data).copy()
 
     if "content" not in df.columns:
         return pd.DataFrame()
 
-    df = df[["content"]]
-    df.rename(columns={"content": "review"}, inplace=True)
+    df["review"] = df["content"].fillna("").astype(str)
     df["clean_review"] = df["review"].apply(clean_text)
 
     return df

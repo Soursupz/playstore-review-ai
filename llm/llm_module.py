@@ -1,16 +1,47 @@
 import os
 import re
+import json
+import time
+import hashlib
 from openai import OpenAI
 
 print("🚀 LLM MODULE LOADING...")
+
+_CACHE_TTL_SECONDS = 600
+_CONTEXT_CACHE = {}
+_STATS_CACHE = {}
+_ANSWER_CACHE = {}
+
+
+def _make_cache_key(*parts):
+    payload = json.dumps(parts, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _cache_get(cache, key):
+    item = cache.get(key)
+    if not item:
+        return None
+
+    value, expires_at = item
+    if time.time() > expires_at:
+        cache.pop(key, None)
+        return None
+
+    return value
+
+
+def _cache_set(cache, key, value, ttl=_CACHE_TTL_SECONDS):
+    cache[key] = (value, time.time() + ttl)
+
 
 def get_client():
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         print("❌ OPENAI_API_KEY TIDAK DITEMUKAN DI ENV")
         return None
-    print("✅ OPENAI_API_KEY TERBACA")
     return OpenAI(api_key=api_key)
+
 
 def clean_answer(text):
     if not text:
@@ -19,190 +50,241 @@ def clean_answer(text):
     text = text.replace("```", "")
     return text.strip()
 
+
 SYSTEM_PROMPT = """
-Kamu adalah PSAI (PlayStore AI Assistant), asisten analis ulasan aplikasi Google Play Store yang cerdas, komunikatif, dan bisa berpendapat.
+Kamu adalah PSAI (PlayStore AI Assistant), asisten analis ulasan aplikasi Google Play Store.
 
-IDENTITAS & KEPRIBADIAN:
-- Kamu analis berpengalaman yang berani berpendapat secara jujur berdasarkan data
-- Kamu berbicara natural seperti teman yang pintar — tidak kaku, tidak selalu pakai format bernomor
-- Pendapatmu selalu punya dasar dari pola yang kamu temukan di data ulasan
+GAYA JAWABAN:
+- Jawab natural, mengalir, dan tidak terasa seperti template
+- Variasikan cara membuka jawaban; jangan selalu pakai pola kalimat yang sama
+- Jangan memaksa format bernomor kecuali memang diminta
+- Kalau tidak perlu, jangan ubah semua jawaban jadi poin-poin
+- Sesuaikan panjang jawaban dengan pertanyaan user
+- Kalau user santai, boleh balas dengan gaya yang lebih santai juga
+- Kalau user minta singkat, jawab singkat dan langsung
+- Kalau user minta penjelasan, baru perjelas secukupnya
+- Kalau user tanya opini, jawab langsung lalu beri alasan singkat yang kuat
+- Kalau user tanya analisis, pilih statistik yang relevan lalu simpulkan dengan bahasa yang enak dibaca
+- Kalau user tanya hal spesifik, langsung ke inti jawaban tanpa pengantar yang bertele-tele
 
-SUMBER DATA:
-- Semua analisis dan pendapat HARUS berdasarkan data ulasan yang diberikan
-- DILARANG menggunakan pengetahuan umum tentang aplikasi di luar data ulasan
-- DILARANG menyebut nama aplikasi spesifik kecuali muncul di ulasan
+ATURAN AKURASI:
+- Hanya gunakan data ulasan yang diberikan
+- Jangan menambah fakta dari luar data
+- Kalau datanya tidak cukup, bilang jujur bahwa kesimpulannya belum kuat
+- Kalau ada kesimpulan, harus jelas dasarnya dari pola ulasan
+- Boleh kutip 1-2 ulasan asli kalau memang memperkuat jawaban
+- Kalau user minta ulasan real dengan nama dan timestamp, tampilkan yang memang ada di data dan jangan mengarang identitas atau waktu
 
-TIPE PERTANYAAN & CARA MENJAWAB:
+FORMAT KUTIPAN ULASAN ASLI:
+- Kalau mengutip ulasan asli dari data (dengan nama pengguna, tanggal/timestamp, dan/atau rating yang memang ada di data), WAJIB tulis di baris tersendiri PERSIS dengan format ini, tanda :: harus muncul TEPAT 3 kali, tanpa spasi di sekitar tanda ::, dan wajib ditutup dengan ]:
+[ULASAN::Nama Pengguna::Tanggal::Rating::Isi ulasan asli]
+- Contoh nyata (rating 4, semua field ada):
+[ULASAN::Sari Wulandari::2024-03-12::4::Aplikasinya bagus tapi kadang force close]
+- Kalau salah satu dari nama/tanggal/rating tidak ada di data, kosongkan bagian itu tapi tanda :: tetap harus 3 kali. Contoh tanpa tanggal:
+[ULASAN::Budi Santoso::::5::Aplikasinya keren banget, gampang dipakai]
+- Rating diisi angka 1-5 saja (tanpa kata "rating" atau simbol), kosongkan kalau tidak ada di data
+- Jangan pakai format ini untuk parafrase atau ringkasan, hanya untuk kutipan langsung dari teks ulasan asli
+- Boleh tulis kalimat analisis biasa sebelum/sesudah baris kutipan ini
 
-1. PERTANYAAN OPINI ("bagus ga?", "rekomen ga?", "worth it?", "layak download ga?")
-   → Jawab langsung dengan pendapatmu (iya/tidak/tergantung) secara natural
-   → Jelaskan alasanmu berdasarkan pola di data
-   → Dukung dengan 1-2 kutipan ulasan asli sebagai bukti
-   → Gaya bahasa santai dan natural, TIDAK pakai format bernomor
+ATURAN BAHASA:
+- Pakai bahasa Indonesia yang natural
+- Jangan pakai backtick atau markdown code block
+- Jangan terdengar kaku atau terlalu formal
+- Boleh terdengar santai seperlunya, tapi tetap profesional dan berbasis data
+- Boleh pakai frasa yang terasa manusiawi seperti "sejauh ini", "yang paling kelihatan", atau "kalau dilihat dari ulasannya"
+- Hindari frasa pembuka yang berulang seperti "Berdasarkan data..." di setiap jawaban
 
-2. PERTANYAAN KOMPARATIF/ANALISIS ("sentimen keseluruhan?", "lebih banyak positif atau negatif?", "gimana kondisi aplikasi ini?")
-   → Wajib tampilkan statistik (jumlah & persentase positif/negatif)
-   → Berikan analisis dan kesimpulan berdasarkan data
-   → Boleh kutip ulasan jika memperkuat analisis
+JIKA DATA KOSONG:
+- Minta user refresh atau ganti link aplikasi
+""".strip()
 
-3. PERTANYAAN SPESIFIK ("apa keluhan terbanyak?", "fitur apa yang disukai?", "masalah apa yang sering muncul?")
-   → Langsung jawab ke poin tanpa statistik
-   → Wajib kutip 1-2 ulasan asli sebagai bukti
-   → Ringkas dan to the point
 
-ATURAN UMUM:
-- Jika pertanyaan tidak berkaitan dengan ulasan/aplikasi → tolak dengan sopan
-- Pertahankan konteks percakapan (multi-turn)
-- Gunakan bahasa Indonesia yang natural
-- Jangan gunakan format markdown seperti backtick
-- Jika data kosong → minta user refresh atau ganti link
-"""
+GREETING_RESPONSE = "Halo! Selamat datang di PlayStore AI Assistant (PSAI) 👋"
 
-GREETING_PROMPT = """
-Kamu adalah PlayStore AI Assistant (PSAI).
-User baru saja menyapamu dengan "Hi PSAI".
-
-Balas dengan sapaan hangat dan ramah, lalu jelaskan cara penggunaan PSAI secara singkat dan jelas.
-Gunakan format berikut PERSIS — jangan tambahkan analisis ulasan apapun:
-
-Halo! Selamat datang di PlayStore AI Assistant (PSAI) 👋
-
-Saya siap membantu kamu menganalisis ulasan aplikasi dari Google Play Store menggunakan AI + IndoBERT.
-
-Cara penggunaan:
-1. Pastikan kamu sudah memasukkan link Play Store atau package name aplikasi di kolom input
-2. Tunggu proses scraping & analisis selesai
-3. Setelah selesai, kamu bisa langsung ajukan pertanyaan seperti:
-   - Apa keluhan terbanyak pengguna?
-   - Bagaimana sentimen pengguna secara keseluruhan?
-   - Apa yang paling disukai pengguna?
-   - Rekomen ga aplikasi ini?
-
-Silakan mulai bertanya! 😊
-"""
 
 def build_context(categorized_results, relevant_reviews):
+    key = _make_cache_key("context", categorized_results or {}, relevant_reviews or [])
+    cached = _cache_get(_CONTEXT_CACHE, key)
+    if cached is not None:
+        return cached
+
+    def _format_review_item(review):
+        if isinstance(review, dict):
+            text = str(review.get("review") or review.get("content") or "").strip()
+            author = str(review.get("userName") or review.get("author") or review.get("reviewer") or "").strip()
+            timestamp = review.get("at") or review.get("timestamp") or review.get("date") or ""
+            score = review.get("score")
+
+            head_parts = []
+            if author:
+                head_parts.append(author)
+            if timestamp:
+                head_parts.append(str(timestamp))
+
+            head = " | ".join(head_parts)
+            if score is not None:
+                head = (head + " | " if head else "") + f"rating {score}"
+
+            if head:
+                return f"{head}: {text}"
+            return text
+
+        return str(review).strip()
+
+    def _limit_reviews(reviews, limit=20, max_len=420):
+        out = []
+        for review in (reviews or [])[:limit]:
+            text = _format_review_item(review)
+            if text:
+                out.append(text[:max_len])
+        return out
+
     context_parts = []
 
-    good_reviews = categorized_results.get("good", [])
+    good_reviews = _limit_reviews((categorized_results or {}).get("good", []))
     if good_reviews:
         context_parts.append(
-            "ULASAN POSITIF:\n" + "\n".join(f'- "{r}"' for r in good_reviews)
+            "ULASAN POSITIF:\n" + "\n".join(f"- {r}" for r in good_reviews)
         )
 
-    bad_reviews = categorized_results.get("bad", [])
+    bad_reviews = _limit_reviews((categorized_results or {}).get("bad", []))
     if bad_reviews:
         context_parts.append(
-            "ULASAN NEGATIF:\n" + "\n".join(f'- "{r}"' for r in bad_reviews)
+            "ULASAN NEGATIF:\n" + "\n".join(f"- {r}" for r in bad_reviews)
         )
 
     if not context_parts:
-        return "\n".join(f'- "{r}"' for r in relevant_reviews) if relevant_reviews else ""
+        result = "\n".join(f"- {r}" for r in _limit_reviews(relevant_reviews, limit=20)) if relevant_reviews else ""
+        _cache_set(_CONTEXT_CACHE, key, result)
+        return result
 
-    return "\n\n".join(context_parts)
+    result = "\n\n".join(context_parts)
+    _cache_set(_CONTEXT_CACHE, key, result)
+    return result
 
 
 def build_stats_summary(sentiment):
     if not sentiment:
         return ""
 
+    key = _make_cache_key("stats", sentiment)
+    cached = _cache_get(_STATS_CACHE, key)
+    if cached is not None:
+        return cached
+
     parts = []
     for category, data in sentiment.items():
         label = "Positif" if category == "good" else "Negatif"
         parts.append(f"{label}: {data['count']} ulasan ({data['percentage']}%)")
 
-    return "STATISTIK ULASAN:\n" + "\n".join(parts)
+    result = "STATISTIK ULASAN:\n" + "\n".join(parts)
+    _cache_set(_STATS_CACHE, key, result)
+    return result
+
+
+def _build_history_text(chat_history):
+    if not chat_history:
+        return "-"
+
+    last_turns = chat_history[-4:]
+    lines = []
+    for turn in last_turns:
+        user_text = (turn.get("query") or turn.get("user") or "").strip()
+        assistant_text = (turn.get("answer") or turn.get("assistant") or "").strip()
+        if user_text:
+            lines.append(f"User: {user_text}")
+        if assistant_text:
+            lines.append(f"Assistant: {assistant_text}")
+
+    return "\n".join(lines) if lines else "-"
+
+
+def _build_user_prompt(query, context, stats, chat_history):
+    history_text = _build_history_text(chat_history)
+    return f"""
+{stats}
+
+DATA ULASAN:
+{context}
+
+RIWAYAT SINGKAT:
+{history_text}
+
+PERTANYAAN USER:
+{query}
+
+PETUNJUK:
+- Jawab sesuai tipe pertanyaan user
+- Buat jawaban terasa seperti orang yang sedang menafsirkan ulasan, bukan menyalin format
+- Pilih alur jawaban yang paling cocok: ringkas, analitis, atau rekomendatif
+- Kalau opini: jawab natural, lalu beri alasan singkat dan jelas
+- Kalau analisis: sebut statistik yang relevan lalu simpulkan
+- Kalau spesifik: langsung jawab inti pertanyaan
+- Kalau user minta rekomendasi, berikan kesimpulan yang jelas di awal lalu dukung dengan alasan
+- Kalau ada kutipan ulasan, pilih yang paling relevan dan jangan berlebihan
+- Kalau user minta ulasan asli atau real review, boleh kutip nama dan timestamp yang memang tersedia di data
+- Kalau data kurang, sampaikan dengan jujur
+- Jangan menebak di luar data ulasan yang tersedia
+""".strip()
 
 
 def generate_answer(query, relevant_reviews, categorized_results=None,
                     sentiment=None, chat_history=None, is_first_message=False):
     client = get_client()
-
     if not client:
-        return "Server belum dikonfigurasi dengan API Key.", 0
+        return "OPENAI_API_KEY belum diatur.", 0
 
-    # ============================================================
-    # HANDLER KHUSUS: "Hi PSAI" — hanya balas sapaan & cara pakai
-    # ============================================================
-    if query.strip().lower().replace("👋", "").strip() in ("hi psai", "hipsai"):
-        try:
-            print("👋 GREETING MODE: Hi PSAI")
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": GREETING_PROMPT},
-                    {"role": "user",   "content": "Hi PSAI"}
-                ],
-                temperature=0.4,
-                max_tokens=400
-            )
-            answer = clean_answer(response.choices[0].message.content)
-            tokens = response.usage.total_tokens
-            print("✅ GREETING RESPONSE SENT, TOKENS:", tokens)
-            return answer, tokens
-        except Exception as e:
-            print("❌ GREETING ERROR:", e)
-            return (
-                "Halo! Selamat datang di PlayStore AI Assistant (PSAI) 👋\n\n"
-                "Saya siap membantu kamu menganalisis ulasan aplikasi dari Google Play Store.\n\n"
-                "Cara penggunaan:\n"
-                "1. Masukkan link Play Store atau package name aplikasi\n"
-                "2. Tunggu proses scraping & analisis selesai\n"
-                "3. Ajukan pertanyaan tentang ulasan aplikasi tersebut\n\n"
-                "Silakan mulai bertanya! 😊"
-            ), 0
+    normalized_query = (query or "").strip().lower().replace("👋", "").strip()
 
-    # ============================================================
-    # HANDLER NORMAL: analisis ulasan
-    # ============================================================
+    if normalized_query in ("hi psai", "hipsai"):
+        return GREETING_RESPONSE, 0
+
     if not relevant_reviews and not categorized_results:
         return (
             "Maaf, tidak ditemukan ulasan yang relevan dari aplikasi ini. "
-            "Silakan coba refresh halaman atau ganti link aplikasi.", 0
+            "Silakan coba refresh halaman atau ganti link aplikasi.",
+            0
         )
 
-    context = build_context(categorized_results or {}, relevant_reviews)
-    stats   = build_stats_summary(sentiment)
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
-    if chat_history:
-        for turn in chat_history[-4:]:
-            messages.append({"role": "user",      "content": turn.get("query", "")})
-            messages.append({"role": "assistant", "content": turn.get("answer", "")})
-
-    user_prompt = (
-        f"{stats}\n\n"
-        f"DATA ULASAN APLIKASI:\n"
-        f"{context}\n\n"
-        f"PERTANYAAN USER:\n{query}\n\n"
-        f"INSTRUKSI:\n"
-        f"Tentukan dulu tipe pertanyaan ini:\n"
-        f"- Opini (bagus ga? rekomen ga? worth it?) → jawab langsung dengan pendapat + alasan + 1-2 kutipan bukti, gaya natural\n"
-        f"- Komparatif/analisis (sentimen keseluruhan? lebih banyak mana?) → tampilkan statistik + analisis\n"
-        f"- Spesifik (keluhan terbanyak? fitur yang disukai?) → langsung ke poin + kutip bukti ulasan\n"
-        f"Semua jawaban HARUS berdasarkan data ulasan di atas.\n"
+    history_slice = chat_history[-4:] if chat_history else []
+    cache_key = _make_cache_key(
+        "answer",
+        normalized_query,
+        relevant_reviews or [],
+        categorized_results or {},
+        sentiment or {},
+        history_slice,
+        bool(is_first_message),
     )
 
-    messages.append({"role": "user", "content": user_prompt})
+    cached = _cache_get(_ANSWER_CACHE, cache_key)
+    if cached is not None:
+        return cached
+
+    context = build_context(categorized_results or {}, relevant_reviews)
+    stats = build_stats_summary(sentiment)
+    user_prompt = _build_user_prompt(query, context, stats, chat_history)
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
 
     try:
-        print("🔥 CALLING OPENAI API...")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            temperature=0.7,
-            max_tokens=700
+            temperature=0.3,
+            max_tokens=700,
         )
 
-        raw_answer   = response.choices[0].message.content
-        answer       = clean_answer(raw_answer)
-        total_tokens = response.usage.total_tokens
+        answer = clean_answer(response.choices[0].message.content or "")
+        usage = getattr(response, "usage", None)
+        total_tokens = getattr(usage, "total_tokens", 0) if usage else 0
 
-        print("✅ OPENAI RESPONSE RECEIVED")
-        print("🎯 TOKENS USED:", total_tokens)
-
-        return answer, total_tokens
+        result = (answer, total_tokens)
+        _cache_set(_ANSWER_CACHE, cache_key, result, ttl=300)
+        return result
 
     except Exception as e:
         print("❌ OPENAI ERROR:", e)
@@ -212,12 +294,5 @@ def generate_answer(query, relevant_reviews, categorized_results=None,
 def handle_scraping_error():
     return (
         "Maaf, terjadi kesalahan saat mengambil ulasan dari Play Store. "
-        "Kemungkinan penyebabnya:\n"
-        "1. Link atau package name aplikasi tidak valid\n"
-        "2. Aplikasi tidak tersedia di Play Store Indonesia\n"
-        "3. Koneksi internet bermasalah\n\n"
-        "Silakan coba:\n"
-        "- Refresh halaman dan coba lagi\n"
-        "- Pastikan link Play Store yang dimasukkan benar\n"
-        "- Coba gunakan package name langsung (contoh: com.shopee.id)"
-    ), 0
+        "Silakan coba refresh halaman atau ganti link aplikasi."
+    )
