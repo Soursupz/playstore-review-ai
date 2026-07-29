@@ -1,0 +1,2 @@
+model_version,dataset,cakupan,labeling_method,class_imbalance_handling,test_accuracy,test_f1_macro,test_precision_macro,test_recall_macro,epochs_trained,best_val_f1
+v5,ulasan_aplikasi_50000_relabeled.csv,17 kategori aplikasi (bukan hanya e-commerce),text-based + emoji mapping (hybrid correction dari rating),class weights (balanced) -- BUKAN SMOTE,0.9779234218696102,0.9777402174340782,0.9781856966916249,0.9773414686773273,7,0.9798361401474873

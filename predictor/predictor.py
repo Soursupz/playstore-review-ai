@@ -3,8 +3,9 @@ import threading
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoConfig, AutoModel
+from preprocessing.sentiment_cleaning import clean_text as clean_for_sentiment
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "sentiment_model_v4")
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "sentiment_model_v5")
 
 _device = torch.device("cpu")
 _tokenizer = None
@@ -45,7 +46,7 @@ def load_model():
 
     with _model_lock:
         if _model is None or _tokenizer is None:
-            print("🔄 Loading Local IndoBERT v4...")
+            print("🔄 Loading Local IndoBERT v5...")
 
             _tokenizer = AutoTokenizer.from_pretrained(
                 MODEL_DIR,
@@ -84,8 +85,8 @@ def predict_sentiment(text: str) -> dict:
     model, tokenizer, device = load_model()
 
     encoding = tokenizer(
-        text,
-        max_length=128,
+        clean_for_sentiment(text),
+        max_length=256,
         padding="max_length",
         truncation=True,
         return_tensors="pt"
@@ -125,9 +126,11 @@ def predict_batch(texts: list, batch_size: int = 32) -> list:
         batch_texts = texts[i:i + batch_size]
         print(f"   🔄 Batch {i // batch_size + 1} / {total_batches} ({len(batch_texts)} teks)")
 
+        clean_batch = [clean_for_sentiment(t) for t in batch_texts]
+
         encoding = tokenizer(
-            batch_texts,
-            max_length=128,
+            clean_batch,
+            max_length=256,
             padding=True,
             truncation=True,
             return_tensors="pt"

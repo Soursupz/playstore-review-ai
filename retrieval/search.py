@@ -1,7 +1,7 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-def search_reviews(query, df, top_n=2):
+def search_reviews(query, df, top_n=8):
     if df.empty:
         return []
 
@@ -16,7 +16,7 @@ def search_reviews(query, df, top_n=2):
     records = df.iloc[top_indices].to_dict(orient="records")
     return records
 
-def search_categorized(query, categorized_dfs, top_n=2):
+def search_categorized(query, categorized_dfs, top_n=8):
     """
     Search di tiap kategori, return dict berisi
     review relevan per kategori

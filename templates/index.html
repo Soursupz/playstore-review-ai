@@ -1307,6 +1307,43 @@
       .step-desc code {
         font-size: 10px;
       }
+
+      .chat-header {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 0.9rem 1.1rem;
+      }
+
+      .chat-header-left {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+
+      .chat-header-info {
+        min-width: 0;
+      }
+
+      .chat-header-info h3 {
+        font-size: 12.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chat-header-info p {
+        font-size: 10px;
+      }
+
+      .chat-header-actions {
+        flex: 1 1 100%;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .chat-header-actions .btn-secondary {
+        font-size: 11px;
+        padding: 6px 10px;
+      }
     }
 </style>
 </head>
@@ -1609,10 +1646,16 @@
     }
 
     // ===== BACKSOUND =====
+    // Kebijakan autoplay di mobile (terutama iOS Safari) jauh lebih ketat dari desktop:
+    // play() WAJIB dipanggil langsung di dalam event handler gesture user (click/touchend),
+    // tanpa menunggu file selesai buffering. Makanya di sini attemptPlay() tidak digate oleh
+    // status "ready" sama sekali, dan listener gesture-nya TIDAK sekali-pakai — supaya kalau
+    // percobaan pertama gagal (mis. file masih loading), tap berikutnya tetap otomatis dicoba
+    // lagi sampai berhasil, tanpa user perlu tahu ada percobaan ulang di baliknya.
     var SOUND_KEY = 'psai_sound_muted';
     var bgm = document.getElementById('bgm');
     var soundToggleBtn = document.getElementById('sound-toggle');
-    var soundReady = false;
+    var soundFileValid = false;
 
     function isSoundMuted() {
       return localStorage.getItem(SOUND_KEY) === '1';
@@ -1625,14 +1668,16 @@
     }
 
     function attemptPlay() {
-      if (!soundReady || isSoundMuted()) return;
+      if (isSoundMuted() || !bgm.paused) return;
       var p = bgm.play();
-      if (p && p.catch) p.catch(function () { /* diblokir browser sampai ada gesture user */ });
-      updateSoundIcon();
+      if (p && p.then) {
+        p.then(updateSoundIcon).catch(function () { /* belum ada gesture yang valid, akan dicoba lagi */ });
+      } else {
+        updateSoundIcon();
+      }
     }
 
     function toggleSound() {
-      if (!soundReady) return;
       if (bgm.paused) {
         localStorage.setItem(SOUND_KEY, '0');
         attemptPlay();
@@ -1644,23 +1689,24 @@
     }
 
     bgm.volume = 0.35;
-    bgm.addEventListener('canplaythrough', function () {
-      if (soundReady) return;
-      soundReady = true;
+    // loadedmetadata cukup cepat (cuma butuh header + sedikit data), tidak perlu nunggu
+    // seluruh file ter-buffer seperti canplaythrough — penting di koneksi mobile/tunnel yang lambat.
+    bgm.addEventListener('loadedmetadata', function () {
+      soundFileValid = true;
       soundToggleBtn.classList.add('ready');
       updateSoundIcon();
-      if (!isSoundMuted()) attemptPlay();
     }, { once: true });
     bgm.addEventListener('error', function () {
-      // Belum ada file musik di static/audio/bgm.mp3 — sembunyikan tombolnya
+      // Belum ada file musik yang valid di static/audio/bgm.mp3 — sembunyikan tombolnya
       // daripada menampilkan kontrol yang tidak berfungsi.
       soundToggleBtn.classList.remove('ready');
     });
 
-    document.addEventListener('click', function firstGesture() {
-      attemptPlay();
-      document.removeEventListener('click', firstGesture);
-    }, { once: true });
+    ['click', 'touchend'].forEach(function (evt) {
+      document.addEventListener(evt, function () {
+        if (soundFileValid) attemptPlay();
+      }, { passive: true });
+    });
 
     function generateParticles() {
       var c = document.getElementById('particles');

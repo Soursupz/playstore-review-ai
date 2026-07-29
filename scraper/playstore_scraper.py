@@ -1,7 +1,7 @@
 from google_play_scraper import reviews, Sort
 from predictor.predictor import predict_sentiment, predict_batch
 
-def scrape_reviews(package_name, count=300):
+def scrape_reviews(package_name, count=500):
     try:
         result, _ = reviews(
             package_name,

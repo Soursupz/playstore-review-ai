@@ -19,7 +19,7 @@ import hashlib
 from urllib.parse import urlparse, parse_qs
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey123"
+app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey123")
 
 # ============================================================
 # IN-MEMORY JOB STORE

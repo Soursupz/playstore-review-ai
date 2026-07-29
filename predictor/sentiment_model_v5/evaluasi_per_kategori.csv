@@ -1,0 +1,17 @@
+kategori,n_data,accuracy,precision_macro,recall_macro,f1_macro
+kesehatan_medis,167,0.994,0.9962,0.9865,0.9912
+ecommerce,215,0.9907,0.9919,0.9894,0.9905
+hiburan_streaming,201,0.99,0.9904,0.9899,0.99
+transportasi_travel,178,0.9888,0.9888,0.989,0.9888
+perbankan,177,0.9887,0.9903,0.9868,0.9884
+keuangan_investasi,199,0.9849,0.9839,0.9853,0.9846
+komunikasi,212,0.9906,0.9944,0.973,0.9833
+pendidikan,122,0.9836,0.9822,0.9822,0.9822
+dompet_digital,183,0.9836,0.9755,0.982,0.9787
+game_battle_royale,204,0.9755,0.976,0.9753,0.9755
+gaya_hidup_kecantikan,180,0.9667,0.9684,0.9656,0.9665
+produktivitas,97,0.9691,0.9773,0.9559,0.9653
+sosial,179,0.9665,0.9674,0.9634,0.9653
+game_casual_puzzle,162,0.963,0.9615,0.9667,0.9628
+berita,157,0.9618,0.9662,0.9538,0.9593
+game_action_moba,266,0.9511,0.926,0.9199,0.9229
