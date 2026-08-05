@@ -7,7 +7,7 @@ from preprocessing.sentiment_cleaning import clean_text as clean_for_sentiment
 
 MODEL_DIR = os.path.join(
     os.path.dirname(__file__),
-    "Pipeline_IndoBERT_Training_dan_Validasi_Manual_AppStore",
+    "Pipeline_IndoBERT_Training_dan_Validasi_Manual_AppStore_v2",
     "sentiment_model_appstore_v1",
 )
 

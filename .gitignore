@@ -3,3 +3,4 @@ __pycache__/
 venv/
 predictor/sentiment_model/
 predictor/Pipeline_IndoBERT_Training_dan_Validasi_Manual_AppStore/sentiment_model_appstore_v1/model.pt
+predictor/Pipeline_IndoBERT_Training_dan_Validasi_Manual_AppStore_v2/sentiment_model_appstore_v1/model.pt

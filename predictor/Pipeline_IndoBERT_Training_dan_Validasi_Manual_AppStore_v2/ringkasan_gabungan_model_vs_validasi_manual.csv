@@ -1,0 +1,3 @@
+metrik,model_terhadap_test_set (Bagian A),akurasi_terkoreksi (Bagian B),selisih_poin_persen
+Accuracy,97.86%,96.20%,+1.66
+F1 (macro),97.46%,95.69%,+1.77
