@@ -2,13 +2,15 @@
 
 load_dotenv()
 
+import re
+
 from flask import Flask, render_template, request, session, jsonify
-from google_play_scraper import search
-from scraper.playstore_scraper import scrape_reviews, categorize_by_model
+from scraper.appstore_scraper import scrape_reviews, categorize_by_model, search_apps
 from preprocessing.cleaning import preprocess_categorized
 from retrieval.search import search_categorized
 from llm.llm_module import generate_answer, handle_scraping_error
 from analysis.sentiment import sentiment_stats
+from analysis.buzzer_detection import detect_buzzer_indicators
 from predictor.predictor import predict_sentiment, predict_batch
 import os
 import uuid
@@ -16,7 +18,7 @@ import threading
 import time
 import json
 import hashlib
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey123")
@@ -56,16 +58,18 @@ def _cache_set(cache, key, value, ttl=_CACHE_TTL_SECONDS):
         cache[key] = (value, time.time() + ttl)
 
 
+APP_STORE_ID_RE = re.compile(r"/id(\d+)")
+
+
 def normalize_package_name(text):
     text = (text or "").strip()
     if not text:
         return ""
 
-    if "play.google.com" in text:
-        parsed = urlparse(text)
-        params = parse_qs(parsed.query)
-        if "id" in params and params["id"]:
-            return params["id"][0].strip()
+    if "apps.apple.com" in text:
+        match = APP_STORE_ID_RE.search(text)
+        if match:
+            return match.group(1)
 
     return text
 
@@ -76,11 +80,15 @@ def get_app_analysis(package_name):
     if cached is not None:
         return cached, True
 
-    raw_data = scrape_reviews(package_name)
+    raw_data = scrape_reviews(package_name, count=300)
     if not raw_data:
         return None, False
 
     categorized = categorize_by_model(raw_data)
+    # Dijalankan setelah kategorisasi supaya heuristik "hype berlebihan" bisa
+    # dibatasi ke ulasan yang memang bersentimen positif (lihat catatan di
+    # analysis/buzzer_detection.py) — tidak menyentuh/mengubah label sentimennya.
+    detect_buzzer_indicators(raw_data)
     categorized_dfs = preprocess_categorized(categorized)
     sentiment = sentiment_stats(categorized)
 
@@ -111,9 +119,9 @@ def run_scraping_job(job_id, package_name, query, chat_history):
         if not analysis:
             jobs[job_id]["status"] = "error"
             jobs[job_id]["error"]  = (
-                "Link atau package name tidak valid atau aplikasi tidak ditemukan "
-                "di Play Store Indonesia. Silakan coba lagi dengan link yang benar, "
-                "contoh: https://play.google.com/store/apps/details?id=com.shopee.id"
+                "Link atau App ID tidak valid atau aplikasi tidak ditemukan "
+                "di App Store Indonesia. Silakan coba lagi dengan link yang benar, "
+                "contoh: https://apps.apple.com/id/app/shopee-8-8-flash-sale/id959841443"
             )
             return
 
@@ -200,24 +208,24 @@ def start():
 
     data  = request.get_json(silent=True) or {}
     link  = (data.get("link") or "").strip()
-    query = (data.get("query") or "Hi PSAI").strip()
+    query = (data.get("query") or "Hi ASAI").strip()
     selected_package_name = normalize_package_name(data.get("package_name") or "")
     package_name = selected_package_name or normalize_package_name(link)
 
     if not link and not selected_package_name:
         return jsonify({"error": "Masukkan link aplikasi atau cari aplikasi dulu."}), 400
 
-    # Parse package name
+    # Parse App ID dari link App Store
     if not selected_package_name and ("http" in link or link.startswith("www.")):
         parsed = urlparse(link if link.startswith("http") else "https://" + link)
-        if parsed.netloc not in ("play.google.com", "www.play.google.com"):
-            return jsonify({"error": "Link tidak valid. Hanya link aplikasi dari Google Play Store yang diterima. Contoh: https://play.google.com/store/apps/details?id=com.shopee.id"}), 400
-        params = parse_qs(parsed.query)
-        package_name = params.get("id", [""])[0].split("&")[0].strip()
+        if parsed.netloc not in ("apps.apple.com", "www.apps.apple.com"):
+            return jsonify({"error": "Link tidak valid. Hanya link aplikasi dari App Store yang diterima. Contoh: https://apps.apple.com/id/app/shopee-8-8-flash-sale/id959841443"}), 400
+        match = APP_STORE_ID_RE.search(parsed.path)
+        package_name = match.group(1) if match else ""
         if not package_name:
-            return jsonify({"error": "Link Play Store tidak mengandung ID aplikasi. Pastikan URL mengandung ?id=nama.paket.aplikasi"}), 400
-    elif not package_name or ' ' in package_name or '.' not in package_name or len(package_name) < 5:
-        return jsonify({"error": "Input tidak valid. Masukkan link Play Store atau pilih aplikasi dari dropdown."}), 400
+            return jsonify({"error": "Link App Store tidak mengandung ID aplikasi. Pastikan URL mengandung /idNNNNNNNNN"}), 400
+    elif not package_name or not package_name.isdigit() or len(package_name) < 5:
+        return jsonify({"error": "Input tidak valid. Masukkan link App Store atau pilih aplikasi dari dropdown."}), 400
 
     session["package_name"] = package_name
     session.modified = True
@@ -247,23 +255,7 @@ def api_search_apps():
         return jsonify({"results": cached, "cached": True})
 
     try:
-        apps = search(q, lang="id", country="id", n_hits=8)
-        results = []
-        for app_item in apps or []:
-            app_id = (app_item.get("appId") or "").strip()
-            if not app_id:
-                # Play Store kadang mengembalikan entri promosi/tanpa appId
-                # (mis. kartu developer resmi) — tidak bisa di-scrape, jadi
-                # tidak perlu ditampilkan sebagai opsi yang bisa dipilih.
-                continue
-            results.append({
-                "title": app_item.get("title", ""),
-                "developer": app_item.get("developer", ""),
-                "appId": app_id,
-                "icon": app_item.get("icon", ""),
-                "url": f"https://play.google.com/store/apps/details?id={app_id}",
-            })
-
+        results = search_apps(q, country="id", limit=8)
         _cache_set(_SEARCH_CACHE, cache_key, results, ttl=900)
         return jsonify({"results": results, "cached": False})
     except Exception as e:

@@ -1,0 +1,2 @@
+model_version,dataset,cakupan,labeling_method,class_imbalance_handling,test_accuracy,test_f1_macro,test_precision_macro,test_recall_macro,epochs_trained,best_val_f1
+appstore_v1,ulasan_appstore_relabeled.csv,11 kategori aplikasi (App Store),text-based (mdhugol) + rating sebagai referensi,class weights (balanced) -- BUKAN SMOTE,0.9808126410835214,0.976403204100848,0.9747079282418247,0.9781383647798743,5,0.9733025452503937

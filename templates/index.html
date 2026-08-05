@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlayStore AI Assistant</title>
+  <title>App Store AI Assistant</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Zen+Kaku+Gothic+New:wght@300;400;700&display=swap"
     rel="stylesheet">
@@ -1037,6 +1037,11 @@
       gap: 12px;
     }
 
+    .chat-header-actions .btn-secondary {
+      color: var(--ink);
+      text-shadow: none;
+    }
+
     /* MODAL */
     .modal-overlay {
       position: fixed;
@@ -1286,6 +1291,33 @@
       line-height: 1.6;
     }
 
+    /* Badge genuine/fake — heuristik, murni informatif. Semua ulasan yang
+       dikutip dapat salah satu dari dua badge ini (lihat formatReviewQuote). */
+    .quote-buzzer-badge {
+      margin-top: 7px;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-style: normal;
+      line-height: 1.5;
+    }
+
+    .quote-buzzer-badge.fake {
+      background: rgba(179, 84, 31, 0.12);
+      border: 1px solid rgba(179, 84, 31, 0.3);
+      color: #a3541f;
+    }
+
+    .quote-buzzer-badge.genuine {
+      background: rgba(90, 140, 90, 0.1);
+      border: 1px solid rgba(90, 140, 90, 0.25);
+      color: #4f7d4f;
+    }
+
+    .quote-buzzer-reason {
+      opacity: 0.8;
+    }
+
     @media(max-width:480px) {
       .glass-card {
         padding: 1.7rem 1.2rem
@@ -1386,7 +1418,7 @@
           </svg>
         </div>
         <p class="welcome-kana">ようこそ · Welcome</p>
-        <h1 class="welcome-title">PlayStore <span>AI</span><br>Assistant</h1>
+        <h1 class="welcome-title">App Store <span>AI</span><br>Assistant</h1>
         <p class="welcome-sub">Analisis ulasan aplikasi dengan kecerdasan buatan</p>
         <div class="divider">
           <div class="divider-line"></div>
@@ -1395,7 +1427,7 @@
         </div>
         <ul class="feature-list">
           <li>
-            <div class="feat-num">一</div><span>Scraping ratusan ulasan Play Store secara otomatis dengan IndoBERT</span>
+            <div class="feat-num">一</div><span>Scraping ratusan ulasan App Store secara otomatis dengan IndoBERT</span>
           </li>
           <li>
             <div class="feat-num">二</div><span>Analisis sentimen positif &amp; negatif berbasis machine learning</span>
@@ -1428,8 +1460,8 @@
             <div class="step-title">Cari atau tempelkan link aplikasi</div>
             <div class="step-desc">Sekarang bisa langsung ketik nama aplikasinya di kolom pencarian dan pilih dari
               daftar yang muncul — atau kalau mau, tetap bisa tempel URL lengkap, contoh:<br>
-              <code>https://play.google.com/store/apps/details?id=com.shopee.id</code><br>
-              atau langsung package name: <code>com.shopee.id</code>
+              <code>https://apps.apple.com/id/app/shopee-8-8-flash-sale/id959841443</code><br>
+              atau langsung App ID: <code>959841443</code>
             </div>
           </div>
         </div>
@@ -1483,8 +1515,8 @@
             </svg>
           </div>
           <div class="chat-header-info">
-            <h3>PlayStore AI Assistant</h3>
-            <p><span class="dot-online"></span>GPT-4o mini · IndoBERT</p>
+            <h3>App Store AI Assistant</h3>
+            <p><span class="dot-online"></span>GPT-4.1 mini · IndoBERT</p>
           </div>
         </div>
         <div class="chat-header-actions">
@@ -1508,7 +1540,7 @@
             <circle cx="32" cy="22" r="12" fill="#5f9bb8" />
             <path d="M4 44c7-9 18-13 28-13s21 4 28 13v8H4z" fill="#5f9bb8" />
           </svg>
-          <p>Cari aplikasi di dropdown<br>atau tempel link Play Store lalu klik <strong>Start Scraping</strong></p>
+          <p>Cari aplikasi di dropdown<br>atau tempel link App Store lalu klik <strong>Start Scraping</strong></p>
         </div>
 
         <!-- Progress card — tampil saat polling -->
@@ -1521,7 +1553,7 @@
               aria-label="Batalkan proses" title="Batalkan proses">✕</button>
           </div>
           <div class="progress-steps">
-            <div class="progress-step" id="pstep-1"><span class="p-icon">◌</span> Scraping ulasan dari Play Store</div>
+            <div class="progress-step" id="pstep-1"><span class="p-icon">◌</span> Scraping ulasan dari App Store</div>
             <div class="progress-step" id="pstep-2"><span class="p-icon">◌</span> Analisis sentimen dengan IndoBERT
             </div>
             <div class="progress-step" id="pstep-3"><span class="p-icon">◌</span> Generate jawaban AI</div>
@@ -1534,7 +1566,7 @@
           <div class="input-wrap">
             <label class="input-label">Cari / pilih aplikasi</label>
             <input type="text" class="styled-input" id="link-input" autocomplete="off"
-              placeholder="Cari nama aplikasi atau tempel link Play Store"
+              placeholder="Cari nama aplikasi atau tempel link App Store"
               aria-autocomplete="list" aria-controls="app-dropdown"
               oninput="handleAppSearchInput()"
               onfocus="handleAppSearchFocus()"
@@ -1568,7 +1600,7 @@
           </button>
         </div>
 
-        <p class="input-hint" id="input-hint">Cari aplikasi di dropdown atau tempel link Play Store</p>
+        <p class="input-hint" id="input-hint">Cari aplikasi di dropdown atau tempel link App Store</p>
       </div>
 
     </div>
@@ -1652,7 +1684,7 @@
     // status "ready" sama sekali, dan listener gesture-nya TIDAK sekali-pakai — supaya kalau
     // percobaan pertama gagal (mis. file masih loading), tap berikutnya tetap otomatis dicoba
     // lagi sampai berhasil, tanpa user perlu tahu ada percobaan ulang di baliknya.
-    var SOUND_KEY = 'psai_sound_muted';
+    var SOUND_KEY = 'asai_sound_muted';
     var bgm = document.getElementById('bgm');
     var soundToggleBtn = document.getElementById('sound-toggle');
     var soundFileValid = false;
@@ -1891,7 +1923,7 @@
         return;
       }
 
-      if (query.indexOf('play.google.com') !== -1 || query.indexOf('http://') === 0 || query.indexOf('https://') === 0) {
+      if (query.indexOf('apps.apple.com') !== -1 || query.indexOf('http://') === 0 || query.indexOf('https://') === 0) {
         hideAppDropdown();
         return;
       }
@@ -2059,8 +2091,8 @@
             var ts = r.timestamp ? new Date(r.timestamp * 1000) : new Date();
 
             if (mode === 'first') {
-              // Bubble user "Hi PSAI👋" sebagai trigger sapaan bot
-              appendMsg('user', 'Hi PSAI👋', null, '', 0, null, ts);
+              // Bubble user "HI ASAI👋" sebagai trigger sapaan bot
+              appendMsg('user', 'Hi ASAI👋', null, '', 0, null, ts);
             }
 
             appendMsg('bot', r.answer, r.sentiment, r.stats, r.token, r.query, ts);
@@ -2155,7 +2187,7 @@
 
     var stepConfig = {
       queued: { text: 'Mengantre proses...', done: 0 },
-      scraping: { text: 'Scraping ulasan dari Play Store...', done: 0, active: 1 },
+      scraping: { text: 'Scraping ulasan dari App Store...', done: 0, active: 1 },
       analyzing: { text: 'Menganalisis sentimen dengan IndoBERT...', done: 1, active: 2 },
       generating: { text: 'Generating jawaban AI...', done: 2, active: 3 },
       done: { text: 'Selesai!', done: 3 }
@@ -2196,21 +2228,34 @@
     var REVIEW_MARKER_RE = /\[ULASAN::([\s\S]*?)\]/g;
 
     function splitReviewFields(raw) {
+      // Format normal (dinormalisasi backend): Nama::Tanggal::Rating::FlagBuzzer::Isi
       var parts = raw.split('::');
+      if (parts.length >= 5) {
+        return {
+          name: parts[0].trim(),
+          date: parts[1].trim(),
+          rating: parts[2].trim(),
+          flag: parts[3].trim(),
+          text: parts.slice(4).join('::').trim()
+        };
+      }
+      // Fallback format lama (4 field, tanpa flag buzzer) — jaga-jaga kalau ada
+      // jawaban basi di cache dari sebelum field flag ditambahkan.
       if (parts.length >= 4) {
         return {
           name: parts[0].trim(),
           date: parts[1].trim(),
           rating: parts[2].trim(),
+          flag: '',
           text: parts.slice(3).join('::').trim()
         };
       }
-      // Model tidak pakai 4 field persis — tetap tampilkan sebagai kutipan polos
+      // Model tidak pakai field persis — tetap tampilkan sebagai kutipan polos
       // daripada kehilangan isinya atau menampilkan tanda kurung mentah.
-      return { name: '', date: '', rating: '', text: raw.trim() };
+      return { name: '', date: '', rating: '', flag: '', text: raw.trim() };
     }
 
-    function formatReviewQuote(name, date, rating, text) {
+    function formatReviewQuote(name, date, rating, flag, text) {
       var headParts = [];
       if (name) headParts.push('<span class="quote-author">' + esc(name) + '</span>');
       if (date) headParts.push('<span class="quote-date">' + esc(date) + '</span>');
@@ -2226,7 +2271,20 @@
         ? '<div class="quote-head">' + headParts.join('<span class="quote-sep">·</span>') + '</div>'
         : '';
 
-      return '<div class="review-quote">' + headHtml + '<div class="quote-text">&ldquo;' + esc(text) + '&rdquo;</div></div>';
+      // Badge genuine/fake — murni informatif, dihitung heuristik di backend
+      // (analysis/buzzer_detection.py), tidak pernah mengubah label sentimen
+      // yang sudah ditampilkan. SEMUA ulasan dapat badge, bukan cuma yang
+      // mencurigakan — format field: "genuine" atau "fake|alasan1; alasan2".
+      var badgeHtml = '';
+      if (flag === 'genuine') {
+        badgeHtml = '<div class="quote-buzzer-badge genuine">✅ Ulasan tampak genuine</div>';
+      } else if (flag.indexOf('fake') === 0) {
+        var reason = flag.slice(flag.indexOf('|') + 1);
+        badgeHtml = '<div class="quote-buzzer-badge fake">⚠️ Ulasan ini berpotensi tidak natural'
+          + (reason ? ' <span class="quote-buzzer-reason">(' + esc(reason) + ')</span>' : '') + '</div>';
+      }
+
+      return '<div class="review-quote">' + headHtml + '<div class="quote-text">&ldquo;' + esc(text) + '&rdquo;</div>' + badgeHtml + '</div>';
     }
 
     function renderBotText(raw) {
@@ -2238,7 +2296,7 @@
         var before = raw.slice(lastIndex, match.index);
         if (before) html += esc(before);
         var f = splitReviewFields(match[1]);
-        if (f.text) html += formatReviewQuote(f.name, f.date, f.rating, f.text);
+        if (f.text) html += formatReviewQuote(f.name, f.date, f.rating, f.flag, f.text);
         lastIndex = REVIEW_MARKER_RE.lastIndex;
       }
       var rest = raw.slice(lastIndex);
@@ -2255,7 +2313,13 @@
       return String(raw).replace(REVIEW_MARKER_RE, function (_, inner) {
         var f = splitReviewFields(inner);
         var head = [f.name, f.date, f.rating].filter(Boolean).join(' · ');
-        return (head ? head + ': ' : '') + '"' + f.text + '"';
+        var flagNote = '';
+        if (f.flag === 'genuine') {
+          flagNote = ' [✅ genuine]';
+        } else if (f.flag.indexOf('fake') === 0) {
+          flagNote = ' [⚠ berpotensi tidak natural: ' + f.flag.slice(f.flag.indexOf('|') + 1) + ']';
+        }
+        return (head ? head + ': ' : '') + '"' + f.text + '"' + flagNote;
       });
     }
 
@@ -2345,7 +2409,7 @@
     // ===== EXPORT CHAT =====
     function exportChat() {
       if (!chatHistory.length) { showToast('Belum ada percakapan untuk diekspor'); return; }
-      var lines = ['PlayStore AI Assistant - Riwayat Percakapan', 'Aplikasi: ' + (packageName || '-'), ''];
+      var lines = ['App Store AI Assistant - Riwayat Percakapan', 'Aplikasi: ' + (packageName || '-'), ''];
       chatHistory.forEach(function (t, i) {
         lines.push('[' + (i + 1) + '] User: ' + (t.query || ''));
         lines.push('AI: ' + humanizeReviewMarkers(t.answer || ''));
@@ -2355,7 +2419,7 @@
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
       a.href = url;
-      a.download = 'psai-chat-' + (packageName || 'export') + '.txt';
+      a.download = 'asai-chat-' + (packageName || 'export') + '.txt';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -2411,7 +2475,7 @@
       var empty = document.createElement('div');
       empty.className = 'chat-empty';
       empty.id = 'chat-empty';
-      empty.innerHTML = '<svg width="34" height="34" viewBox="0 0 64 64" fill="none" opacity="0.4"><circle cx="32" cy="22" r="12" fill="#5f9bb8"/><path d="M4 44c7-9 18-13 28-13s21 4 28 13v8H4z" fill="#5f9bb8"/></svg><p>Cari aplikasi di dropdown<br>atau tempel link Play Store lalu klik <strong>Start Scraping</strong></p>';
+      empty.innerHTML = '<svg width="34" height="34" viewBox="0 0 64 64" fill="none" opacity="0.4"><circle cx="32" cy="22" r="12" fill="#5f9bb8"/><path d="M4 44c7-9 18-13 28-13s21 4 28 13v8H4z" fill="#5f9bb8"/></svg><p>Cari aplikasi di dropdown<br>atau tempel link App Store lalu klik <strong>Start Scraping</strong></p>';
       body.insertBefore(empty, body.firstChild);
     }
 
@@ -2428,7 +2492,7 @@
       document.getElementById('pkg-bar').classList.remove('visible');
       document.getElementById('question-row').classList.add('hidden');
       document.getElementById('link-section').classList.remove('hidden');
-      document.getElementById('input-hint').textContent = 'Cari aplikasi di dropdown atau tempel link Play Store';
+      document.getElementById('input-hint').textContent = 'Cari aplikasi di dropdown atau tempel link App Store';
       document.getElementById('link-input').value = '';
       hideAppDropdown();
       resetScrapeBtn();

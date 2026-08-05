@@ -5,6 +5,8 @@ import time
 import hashlib
 from openai import OpenAI
 
+from preprocessing.sentiment_cleaning import is_indonesian_text
+
 print("🚀 LLM MODULE LOADING...")
 
 _CACHE_TTL_SECONDS = 600
@@ -51,8 +53,102 @@ def clean_answer(text):
     return text.strip()
 
 
+RATING_REQUEST_KEYWORDS = ("rating", "bintang", "star")
+_REVIEW_MARKER_RE = re.compile(r"\[ULASAN::([\s\S]*?)\]")
+
+
+def wants_rating(query):
+    q = (query or "").lower()
+    return any(kw in q for kw in RATING_REQUEST_KEYWORDS)
+
+
+def _build_buzzer_lookup(categorized_results, relevant_reviews):
+    # Kunci lookup = teks ulasan asli (lowercase, trim) -> status buzzer.
+    # SEMUA ulasan dilabeli (bukan cuma yang mencurigakan) — konsisten sama
+    # cara kedua jurnal rujukan kerja: tiap komentar diklasifikasi genuine
+    # (non-buzzer) atau fake/buzzer, bukan cuma sebagian yang ditandai.
+    # Format value: "genuine" atau "fake|alasan1; alasan2".
+    lookup = {}
+
+    def _add(reviews):
+        for r in reviews or []:
+            if not isinstance(r, dict):
+                continue
+            text = str(r.get("review") or r.get("content") or "").strip().lower()
+            if not text:
+                continue
+            if r.get("buzzer_flag"):
+                reasons = "; ".join(r.get("buzzer_reasons") or []) or "berpotensi tidak natural"
+                lookup[text] = "fake|" + reasons
+            else:
+                lookup[text] = "genuine"
+
+    _add((categorized_results or {}).get("good"))
+    _add((categorized_results or {}).get("bad"))
+    _add(relevant_reviews)
+    return lookup
+
+
+def _match_buzzer_status(marker_text, buzzer_lookup):
+    marker_norm = marker_text.strip().lower()
+    if not marker_norm or not buzzer_lookup:
+        return ""
+
+    if marker_norm in buzzer_lookup:
+        return buzzer_lookup[marker_norm]
+
+    # Fallback: konteks yang dikirim ke model dipotong sampai 420 karakter
+    # (lihat _limit_reviews), jadi kutipan ulasan panjang bisa jadi cuma
+    # cuplikan — dicocokkan lewat containment, bukan exact match saja.
+    if len(marker_norm) >= 20:
+        for content_norm, status in buzzer_lookup.items():
+            if marker_norm in content_norm or content_norm.startswith(marker_norm[:100]):
+                return status
+
+    return ""
+
+
+def postprocess_review_markers(answer, include_rating, buzzer_lookup):
+    # Jaring pengaman terakhir + tempat nempelin info yang model sendiri
+    # tidak tahu/tidak boleh dipercaya buat mengisi:
+    # - Rating kadang tetap diisi model walau instruksi bilang jangan, jadi
+    #   dipaksa kosong lagi di sini kalau user tidak eksplisit minta rating.
+    # - Status genuine/fake TIDAK PERNAH diminta ke model sama sekali (supaya
+    #   tidak bisa dihalusinasi) — backend yang nyisipin sendiri berdasarkan
+    #   hasil detect_buzzer_indicators(), dicocokkan lewat teks kutipannya.
+    #   SEMUA ulasan yang dikutip dapat status ("genuine" atau "fake|alasan"),
+    #   bukan cuma yang mencurigakan.
+    # Marker selalu dinormalisasi jadi format 5 field:
+    # [ULASAN::Nama::Tanggal::Rating::StatusGenuineFake::Isi]
+    def _process_one(match):
+        parts = match.group(1).split("::")
+        # Model tidak selalu konsisten pakai 4 field persis (kadang placeholder
+        # Rating yang kosong malah dihilangkan semua, jadi cuma Nama::Tanggal::Isi)
+        # — field diambil selentur mungkin dari depan, sisanya dianggap Isi.
+        if len(parts) >= 4:
+            name, date, rating = parts[0], parts[1], parts[2]
+            text = "::".join(parts[3:])
+        elif len(parts) == 3:
+            name, date, rating = parts[0], parts[1], ""
+            text = parts[2]
+        elif len(parts) == 2:
+            name, date, rating = parts[0], "", ""
+            text = parts[1]
+        else:
+            return match.group(0)
+
+        if not include_rating:
+            rating = ""
+
+        flag = _match_buzzer_status(text, buzzer_lookup)
+
+        return "[ULASAN::" + "::".join([name, date, rating, flag, text]) + "]"
+
+    return _REVIEW_MARKER_RE.sub(_process_one, answer or "")
+
+
 SYSTEM_PROMPT = """
-Kamu adalah PSAI (PlayStore AI Assistant), asisten analis ulasan aplikasi Google Play Store.
+Kamu adalah ASAI (App Store AI Assistant), asisten analis ulasan aplikasi Apple App Store.
 
 BATASAN TOPIK (WAJIB DIPATUHI PALING UTAMA):
 - Kamu HANYA boleh membahas ulasan aplikasi yang sedang dianalisis: keluhan, pujian, sentimen, rating, rekomendasi, dan hal terkait pengalaman pengguna aplikasi ini
@@ -88,19 +184,22 @@ SUMBER KEBENARAN SENTIMEN (WAJIB DIPATUHI):
 - Jangan heran atau mengoreksi kalau ada ulasan rating rendah masuk kelompok positif (atau sebaliknya) — itu wajar karena klasifikasi berbasis makna teks, bukan angka bintang. Jangan menyebutnya sebagai kejanggalan atau kesalahan data
 
 FORMAT KUTIPAN ULASAN ASLI:
-- Kalau mengutip ulasan asli dari data (dengan nama pengguna, tanggal/timestamp, dan/atau rating yang memang ada di data), WAJIB tulis di baris tersendiri PERSIS dengan format ini, tanda :: harus muncul TEPAT 3 kali, tanpa spasi di sekitar tanda ::, dan wajib ditutup dengan ]:
+- Kalau mengutip ulasan asli dari data (dengan nama pengguna dan/atau tanggal/timestamp yang memang ada di data), WAJIB tulis di baris tersendiri PERSIS dengan format ini, tanda :: harus muncul TEPAT 3 kali, tanpa spasi di sekitar tanda ::, dan wajib ditutup dengan ]:
 [ULASAN::Nama Pengguna::Tanggal::Rating::Isi ulasan asli]
-- Contoh nyata (rating 4, semua field ada):
+- ATURAN RATING/BINTANG (WAJIB, JANGAN DILANGGAR): field Rating HARUS DIKOSONGKAN SECARA DEFAULT walaupun rating aslinya ADA di data. Field Rating HANYA boleh diisi kalau user di pertanyaannya SECARA EKSPLISIT minta lihat rating/bintang (mis. "tampilkan rating juga", "berapa bintangnya", "sekalian kasih liat ratingnya"). Kalau user cuma bilang "tampilkan ulasan asli"/"kasih contoh review"/"ada ulasan apa aja" TANPA menyebut kata rating/bintang, field Rating WAJIB kosong — jangan diisi meski datanya tersedia
+- Contoh default (user TIDAK minta rating, field Rating dikosongkan walau di data ada ratingnya):
+[ULASAN::Sari Wulandari::2024-03-12::::Aplikasinya bagus tapi kadang force close]
+- Contoh kalau user EKSPLISIT minta rating/bintang:
 [ULASAN::Sari Wulandari::2024-03-12::4::Aplikasinya bagus tapi kadang force close]
-- Kalau salah satu dari nama/tanggal/rating tidak ada di data, kosongkan bagian itu tapi tanda :: tetap harus 3 kali. Contoh tanpa tanggal:
-[ULASAN::Budi Santoso::::5::Aplikasinya keren banget, gampang dipakai]
-- Rating diisi angka 1-5 saja (tanpa kata "rating" atau simbol), kosongkan kalau tidak ada di data
+- Rating diisi angka 1-5 saja (tanpa kata "rating" atau simbol) kalau memang diminta
+- Kalau nama/tanggal juga tidak ada di data, kosongkan juga bagian itu, tapi tanda :: tetap harus 3 kali
 - Jangan pakai format ini untuk parafrase atau ringkasan, hanya untuk kutipan langsung dari teks ulasan asli
 - Boleh tulis kalimat analisis biasa sebelum/sesudah baris kutipan ini
 
 KALAU USER MINTA ULASAN REAL/ASLI (WAJIB, TIDAK BOLEH DILANGGAR):
 - Ini berlaku untuk permintaan apapun bentuknya: "tampilkan ulasan real/asli", "kasih contoh ulasan", "ada ulasan apa aja", "tunjukkan review positif dan negatif", dsb — baik diminta satu maupun banyak sekaligus
 - SETIAP ulasan yang ditampilkan WAJIB pakai baris marker [ULASAN::Nama::Tanggal::Rating::Isi], satu marker untuk satu ulasan, masing-masing di baris sendiri
+- INGAT LAGI: field Rating di marker-marker ini WAJIB kosong kecuali user eksplisit minta rating/bintang ditampilkan (lihat ATURAN RATING/BINTANG di atas) — jangan otomatis isi rating cuma karena lagi menampilkan banyak ulasan sekaligus
 - DILARANG membuat heading markdown seperti **Ulasan Positif:** atau **Ulasan Negatif:**, dan DILARANG membuat penomoran manual seperti "1. Nama, dengan rating X, mengungkapkan..." — itu bukan kutipan, itu parafrase berbalut format, dan TIDAK akan tampil sebagai card ke user
 - Kalau perlu memisahkan kelompok positif dan negatif, cukup pakai satu kalimat natural biasa (tanpa bold/heading) sebagai pengantar sebelum kumpulan marker, misalnya "Untuk yang positif, ada beberapa yang bilang:" lalu langsung deretan marker
 - Isi field "Isi" pada marker HARUS teks asli dari data, bukan ringkasan atau parafrase kalimat user
@@ -118,18 +217,36 @@ JIKA DATA KOSONG:
 """.strip()
 
 
-GREETING_RESPONSE = "Halo! Selamat datang di PlayStore AI Assistant (PSAI) 👋"
+GREETING_RESPONSE = "Halo! Selamat datang di App Store AI Assistant (ASAI) 👋"
 
 
-def build_context(categorized_results, relevant_reviews):
-    key = _make_cache_key("context", categorized_results or {}, relevant_reviews or [])
+def _review_text(review):
+    if isinstance(review, dict):
+        return str(review.get("review") or review.get("content") or "").strip()
+    return str(review).strip()
+
+
+def _filter_indonesian_reviews(reviews):
+    # Lapisan pertahanan kedua terhadap ulasan berbahasa asing — dijalankan
+    # lagi di sini (bukan cuma pas scraping) supaya data lama yang sempat
+    # ke-cache sebelum filter bahasa dipasang tetap ikut tersaring.
+    out = []
+    for review in reviews or []:
+        text = _review_text(review)
+        if not text or is_indonesian_text(text):
+            out.append(review)
+    return out
+
+
+def build_context(categorized_results, relevant_reviews, include_rating=False):
+    key = _make_cache_key("context", categorized_results or {}, relevant_reviews or [], bool(include_rating))
     cached = _cache_get(_CONTEXT_CACHE, key)
     if cached is not None:
         return cached
 
     def _format_review_item(review):
         if isinstance(review, dict):
-            text = str(review.get("review") or review.get("content") or "").strip()
+            text = _review_text(review)
             author = str(review.get("userName") or review.get("author") or review.get("reviewer") or "").strip()
             timestamp = review.get("at") or review.get("timestamp") or review.get("date") or ""
             score = review.get("score")
@@ -141,7 +258,10 @@ def build_context(categorized_results, relevant_reviews):
                 head_parts.append(str(timestamp))
 
             head = " | ".join(head_parts)
-            if score is not None:
+            # Rating cuma dimasukkan ke konteks kalau user memang minta —
+            # kalau selalu disertakan, model jadi ikut nyebut rating di
+            # jawabannya walau instruksi output bilang jangan.
+            if include_rating and score is not None:
                 head = (head + " | " if head else "") + f"rating {score}"
 
             if head:
@@ -152,7 +272,7 @@ def build_context(categorized_results, relevant_reviews):
 
     def _limit_reviews(reviews, limit=20, max_len=420):
         out = []
-        for review in (reviews or [])[:limit]:
+        for review in _filter_indonesian_reviews(reviews)[:limit]:
             text = _format_review_item(review)
             if text:
                 out.append(text[:max_len])
@@ -255,7 +375,7 @@ def generate_answer(query, relevant_reviews, categorized_results=None,
 
     normalized_query = (query or "").strip().lower().replace("👋", "").strip()
 
-    if normalized_query in ("hi psai", "hipsai"):
+    if normalized_query in ("hi asai", "hiasai"):
         return GREETING_RESPONSE, 0
 
     if not relevant_reviews and not categorized_results:
@@ -264,6 +384,8 @@ def generate_answer(query, relevant_reviews, categorized_results=None,
             "Silakan coba refresh halaman atau ganti link aplikasi.",
             0
         )
+
+    include_rating = wants_rating(query)
 
     history_slice = chat_history[-4:] if chat_history else []
     cache_key = _make_cache_key(
@@ -274,13 +396,14 @@ def generate_answer(query, relevant_reviews, categorized_results=None,
         sentiment or {},
         history_slice,
         bool(is_first_message),
+        include_rating,
     )
 
     cached = _cache_get(_ANSWER_CACHE, cache_key)
     if cached is not None:
         return cached
 
-    context = build_context(categorized_results or {}, relevant_reviews)
+    context = build_context(categorized_results or {}, relevant_reviews, include_rating=include_rating)
     stats = build_stats_summary(sentiment)
     user_prompt = _build_user_prompt(query, context, stats, chat_history)
 
@@ -298,6 +421,9 @@ def generate_answer(query, relevant_reviews, categorized_results=None,
         )
 
         answer = clean_answer(response.choices[0].message.content or "")
+        buzzer_lookup = _build_buzzer_lookup(categorized_results, relevant_reviews)
+        answer = postprocess_review_markers(answer, include_rating, buzzer_lookup)
+
         usage = getattr(response, "usage", None)
         total_tokens = getattr(usage, "total_tokens", 0) if usage else 0
 
@@ -312,6 +438,6 @@ def generate_answer(query, relevant_reviews, categorized_results=None,
 
 def handle_scraping_error():
     return (
-        "Maaf, terjadi kesalahan saat mengambil ulasan dari Play Store. "
+        "Maaf, terjadi kesalahan saat mengambil ulasan dari App Store. "
         "Silakan coba refresh halaman atau ganti link aplikasi."
     )

@@ -5,7 +5,11 @@ import torch.nn as nn
 from transformers import AutoTokenizer, AutoConfig, AutoModel
 from preprocessing.sentiment_cleaning import clean_text as clean_for_sentiment
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "sentiment_model_v5")
+MODEL_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "Pipeline_IndoBERT_Training_dan_Validasi_Manual_AppStore",
+    "sentiment_model_appstore_v1",
+)
 
 _device = torch.device("cpu")
 _tokenizer = None
@@ -46,7 +50,7 @@ def load_model():
 
     with _model_lock:
         if _model is None or _tokenizer is None:
-            print("🔄 Loading Local IndoBERT v5...")
+            print("🔄 Loading Local IndoBERT (App Store)...")
 
             _tokenizer = AutoTokenizer.from_pretrained(
                 MODEL_DIR,
@@ -55,7 +59,7 @@ def load_model():
 
             _model = IndoBERTEnhanced(MODEL_DIR, num_labels=2, dropout=0.2)
 
-            weights_path = os.path.join(MODEL_DIR, "model_weights.pt")
+            weights_path = os.path.join(MODEL_DIR, "model.pt")
             state_dict = torch.load(weights_path, map_location=_device)
             _model.load_state_dict(state_dict)
 
